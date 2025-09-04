@@ -61,70 +61,226 @@ class AlumniConnectAPITester:
     def test_root_endpoint(self):
         """Test API root endpoint"""
         success, response = self.run_test("API Root", "GET", "", 200)
+        if success:
+            print(f"   API Version: {response.get('message', 'Unknown')}")
         return success
 
-    def test_student_registration(self):
-        """Test student registration"""
-        student_data = {
-            "email": "student@test.com",
-            "password": "password123",
-            "first_name": "Test",
-            "last_name": "Student",
-            "role": "Student",
-            "major": "Computer Science",
-            "graduation_year": 2025
+    # ===== EXISTING USER LOGIN TESTS =====
+    def test_platform_admin_login(self):
+        """Test platform admin login with existing account"""
+        login_data = {
+            "email": "admin@platform.com",
+            "password": "admin123456"
         }
         
-        success, response = self.run_test("Student Registration", "POST", "auth/register", 200, student_data)
+        success, response = self.run_test("Platform Admin Login", "POST", "auth/login", 200, login_data)
         if success and 'access_token' in response:
-            self.student_token = response['access_token']
-            self.student_user_id = response['user']['id']
-            print(f"   Student token obtained: {self.student_token[:20]}...")
+            self.platform_admin_token = response['access_token']
+            print(f"   Platform Admin token obtained")
         return success
 
-    def test_alumni_registration(self):
-        """Test alumni registration"""
-        alumni_data = {
-            "email": "alumni@test.com",
-            "password": "password123",
-            "first_name": "Test",
-            "last_name": "Alumni",
-            "role": "Alumni",
-            "major": "Computer Science",
-            "graduation_year": 2020
+    def test_institution_admin_login(self):
+        """Test institution admin login with existing account"""
+        login_data = {
+            "email": "admin@stanford.edu",
+            "password": "stanford123456"
         }
         
-        success, response = self.run_test("Alumni Registration", "POST", "auth/register", 200, alumni_data)
+        success, response = self.run_test("Institution Admin Login", "POST", "auth/login", 200, login_data)
         if success and 'access_token' in response:
-            self.alumni_token = response['access_token']
-            self.alumni_user_id = response['user']['id']
-            print(f"   Alumni token obtained: {self.alumni_token[:20]}...")
+            self.institution_admin_token = response['access_token']
+            print(f"   Institution Admin token obtained")
         return success
 
     def test_student_login(self):
-        """Test student login"""
+        """Test student login with existing account"""
         login_data = {
-            "email": "student@test.com",
-            "password": "password123"
+            "email": "student@stanford.edu",
+            "password": "student123456"
         }
         
         success, response = self.run_test("Student Login", "POST", "auth/login", 200, login_data)
         if success and 'access_token' in response:
             self.student_token = response['access_token']
-            print(f"   Student login successful")
+            self.student_user_id = response['user']['id']
+            print(f"   Student token obtained")
         return success
 
-    def test_alumni_login(self):
-        """Test alumni login"""
-        login_data = {
-            "email": "alumni@test.com",
-            "password": "password123"
+    # ===== INSTITUTION MANAGEMENT TESTS =====
+    def test_institution_registration(self):
+        """Test institution registration"""
+        timestamp = int(time.time())
+        institution_data = {
+            "name": f"Test University {timestamp}",
+            "website": "https://testuniversity.edu",
+            "admin_first_name": "Test",
+            "admin_last_name": "Admin",
+            "admin_email": f"admin{timestamp}@testuniversity.edu",
+            "admin_password": "testpassword123"
         }
         
-        success, response = self.run_test("Alumni Login", "POST", "auth/login", 200, login_data)
+        success, response = self.run_test("Institution Registration", "POST", "institutions/register", 200, institution_data)
+        if success and 'institution_id' in response:
+            self.created_institution_id = response['institution_id']
+            print(f"   Created institution ID: {self.created_institution_id}")
+        return success
+
+    def test_get_approved_institutions(self):
+        """Test getting approved institutions for registration dropdown"""
+        success, response = self.run_test("Get Approved Institutions", "GET", "institutions", 200)
+        if success:
+            print(f"   Found {len(response)} approved institutions")
+        return success
+
+    def test_get_pending_institutions_platform_admin(self):
+        """Test platform admin getting pending institutions"""
+        success, response = self.run_test("Get Pending Institutions (Platform Admin)", "GET", "admin/institutions/pending", 200, token=self.platform_admin_token)
+        if success:
+            print(f"   Found {len(response)} pending institutions")
+        return success
+
+    def test_get_pending_institutions_unauthorized(self):
+        """Test getting pending institutions without platform admin access (should fail)"""
+        success, response = self.run_test("Get Pending Institutions (Unauthorized)", "GET", "admin/institutions/pending", 403, token=self.student_token)
+        return success
+
+    def test_approve_institution(self):
+        """Test platform admin approving an institution"""
+        if not self.created_institution_id:
+            print("❌ No institution ID available for approval test")
+            return False
+            
+        success, response = self.run_test("Approve Institution", "POST", f"admin/institutions/{self.created_institution_id}/approve", 200, {}, self.platform_admin_token)
+        return success
+
+    def test_reject_institution(self):
+        """Test platform admin rejecting an institution (create new one first)"""
+        # Create a new institution to reject
+        timestamp = int(time.time())
+        institution_data = {
+            "name": f"Reject Test University {timestamp}",
+            "website": "https://rejecttest.edu",
+            "admin_first_name": "Reject",
+            "admin_last_name": "Admin",
+            "admin_email": f"reject{timestamp}@rejecttest.edu",
+            "admin_password": "rejectpassword123"
+        }
+        
+        create_success, create_response = self.run_test("Create Institution for Rejection", "POST", "institutions/register", 200, institution_data)
+        if not create_success or 'institution_id' not in create_response:
+            return False
+            
+        reject_id = create_response['institution_id']
+        success, response = self.run_test("Reject Institution", "POST", f"admin/institutions/{reject_id}/reject", 200, {}, self.platform_admin_token)
+        return success
+
+    # ===== RATE LIMITING TESTS =====
+    def test_rate_limiting_register(self):
+        """Test rate limiting on registration endpoint (5/minute)"""
+        print("   Testing rate limiting on registration (5/minute)...")
+        
+        # Make 6 rapid requests to trigger rate limiting
+        for i in range(6):
+            timestamp = int(time.time() * 1000) + i  # Unique timestamp
+            user_data = {
+                "email": f"ratetest{timestamp}@test.com",
+                "password": "password123",
+                "first_name": "Rate",
+                "last_name": "Test",
+                "role": "Student",
+                "major": "Computer Science"
+            }
+            
+            if i < 5:
+                # First 5 should succeed or fail normally (not rate limited)
+                success, response = self.run_test(f"Rate Test {i+1}/6", "POST", "auth/register", None, user_data)
+            else:
+                # 6th should be rate limited
+                success, response = self.run_test("Rate Limit Test (Should be 429)", "POST", "auth/register", 429, user_data)
+                return success
+        
+        return False
+
+    def test_rate_limiting_login(self):
+        """Test rate limiting on login endpoint (10/minute)"""
+        print("   Testing rate limiting on login (10/minute)...")
+        
+        # Make 11 rapid requests to trigger rate limiting
+        login_data = {
+            "email": "nonexistent@test.com",
+            "password": "wrongpassword"
+        }
+        
+        for i in range(11):
+            if i < 10:
+                # First 10 should fail normally (not rate limited)
+                success, response = self.run_test(f"Login Rate Test {i+1}/11", "POST", "auth/login", 400, login_data)
+            else:
+                # 11th should be rate limited
+                success, response = self.run_test("Login Rate Limit Test (Should be 429)", "POST", "auth/login", 429, login_data)
+                return success
+        
+        return False
+
+    # ===== ENHANCED USER REGISTRATION TESTS =====
+    def test_student_registration_with_institution(self):
+        """Test student registration with institution requirement"""
+        # First get an approved institution
+        inst_success, inst_response = self.run_test("Get Institutions for Registration", "GET", "institutions", 200)
+        if not inst_success or not inst_response:
+            print("❌ No approved institutions available for registration test")
+            return False
+            
+        institution_id = inst_response[0]['id'] if inst_response else None
+        if not institution_id:
+            print("❌ No institution ID found")
+            return False
+            
+        timestamp = int(time.time())
+        student_data = {
+            "email": f"newstudent{timestamp}@test.com",
+            "password": "password123",
+            "first_name": "New",
+            "last_name": "Student",
+            "role": "Student",
+            "institution_id": institution_id,
+            "major": "Computer Science",
+            "graduation_year": 2025
+        }
+        
+        success, response = self.run_test("Student Registration with Institution", "POST", "auth/register", 200, student_data)
+        if success and 'access_token' in response:
+            print(f"   New student registered with institution: {institution_id}")
+        return success
+
+    def test_alumni_registration_with_institution(self):
+        """Test alumni registration with institution requirement"""
+        # Get an approved institution
+        inst_success, inst_response = self.run_test("Get Institutions for Alumni Registration", "GET", "institutions", 200)
+        if not inst_success or not inst_response:
+            return False
+            
+        institution_id = inst_response[0]['id'] if inst_response else None
+        if not institution_id:
+            return False
+            
+        timestamp = int(time.time())
+        alumni_data = {
+            "email": f"newalumni{timestamp}@test.com",
+            "password": "password123",
+            "first_name": "New",
+            "last_name": "Alumni",
+            "role": "Alumni",
+            "institution_id": institution_id,
+            "major": "Computer Science",
+            "graduation_year": 2020
+        }
+        
+        success, response = self.run_test("Alumni Registration with Institution", "POST", "auth/register", 200, alumni_data)
         if success and 'access_token' in response:
             self.alumni_token = response['access_token']
-            print(f"   Alumni login successful")
+            self.alumni_user_id = response['user']['id']
+            print(f"   New alumni registered with institution: {institution_id}")
         return success
 
     def test_get_profile(self):
