@@ -294,7 +294,7 @@ def parse_from_mongo(item):
     return item
 
 # Root route
-@api_router.get("/")
+@api_router.get("/", "/api")
 async def root():
     return {"message": "Alumni Connect API v2.0", "status": "running", "features": ["multi-institution", "ai-powered"]}
 
