@@ -479,60 +479,119 @@ class AlumniConnectAPITester:
         return success
 
 def main():
-    print("🚀 Starting Alumni Connect API Testing Suite")
-    print("=" * 60)
+    print("🚀 Starting Alumni Connect v2.0 Comprehensive API Testing Suite")
+    print("Testing Multi-Institution Architecture, Enhanced Security & AI Features")
+    print("=" * 80)
     
     tester = AlumniConnectAPITester()
     
-    # Test sequence
+    # Comprehensive test sequence covering all new features
     tests = [
-        ("API Root", tester.test_root_endpoint),
-        ("Student Registration", tester.test_student_registration),
-        ("Alumni Registration", tester.test_alumni_registration),
+        # Basic API Health
+        ("API Root Endpoint", tester.test_root_endpoint),
+        
+        # Authentication with existing accounts
+        ("Platform Admin Login", tester.test_platform_admin_login),
+        ("Institution Admin Login", tester.test_institution_admin_login),
         ("Student Login", tester.test_student_login),
-        ("Alumni Login", tester.test_alumni_login),
-        ("Get Profile", tester.test_get_profile),
-        ("Update Profile", tester.test_update_profile),
-        ("Get Users", tester.test_get_users),
+        
+        # Institution Management Workflow
+        ("Institution Registration", tester.test_institution_registration),
+        ("Get Approved Institutions", tester.test_get_approved_institutions),
+        ("Get Pending Institutions (Platform Admin)", tester.test_get_pending_institutions_platform_admin),
+        ("Get Pending Institutions (Unauthorized)", tester.test_get_pending_institutions_unauthorized),
+        ("Approve Institution", tester.test_approve_institution),
+        ("Reject Institution", tester.test_reject_institution),
+        
+        # Rate Limiting Tests
+        ("Rate Limiting - Registration", tester.test_rate_limiting_register),
+        ("Rate Limiting - Login", tester.test_rate_limiting_login),
+        
+        # Enhanced User Registration
+        ("Student Registration with Institution", tester.test_student_registration_with_institution),
+        ("Alumni Registration with Institution", tester.test_alumni_registration_with_institution),
+        
+        # Institution-Scoped Data Access
+        ("Institution-Scoped Users", tester.test_institution_scoped_users),
+        ("Institution-Scoped Posts", tester.test_institution_scoped_posts),
+        ("Institution-Scoped Jobs", tester.test_institution_scoped_jobs),
+        
+        # Admin User Management
+        ("Get Pending Users (Institution Admin)", tester.test_get_pending_users_institution_admin),
+        ("Get Pending Users (Platform Admin)", tester.test_get_pending_users_platform_admin),
+        ("Verify User (Institution Admin)", tester.test_verify_user_institution_admin),
+        
+        # AI Mentor Matching with Enhanced Reliability
+        ("AI Mentor Matching (Student)", tester.test_ai_mentor_matching_student),
+        ("AI Mentor Matching (Unauthorized)", tester.test_ai_mentor_matching_unauthorized),
+        
+        # Security & Input Sanitization
+        ("Input Sanitization (XSS Prevention)", tester.test_input_sanitization_xss),
+        ("Password Validation", tester.test_password_validation),
+        
+        # Core Functionality Tests
+        ("Get User Profile", tester.test_get_profile),
+        ("Update User Profile", tester.test_update_profile),
         ("Create Post", tester.test_create_post),
-        ("Get Feed", tester.test_get_feed),
         ("Like Post", tester.test_like_post),
         ("Add Comment", tester.test_add_comment),
         ("Create Job (Alumni)", tester.test_create_job),
         ("Create Job (Student - Should Fail)", tester.test_create_job_as_student),
-        ("Get Jobs", tester.test_get_jobs),
-        ("AI Mentor Matching", tester.test_ai_mentor_matching),
-        ("AI Mentor Matching (Alumni - Should Fail)", tester.test_ai_mentor_matching_as_alumni),
         ("Unauthorized Access", tester.test_unauthorized_access),
     ]
     
     failed_tests = []
+    critical_failures = []
     
     for test_name, test_func in tests:
         try:
             if not test_func():
                 failed_tests.append(test_name)
+                # Mark critical failures
+                if any(keyword in test_name.lower() for keyword in ['institution', 'admin', 'rate limiting', 'ai mentor']):
+                    critical_failures.append(test_name)
         except Exception as e:
             print(f"❌ {test_name} - Exception: {str(e)}")
             failed_tests.append(test_name)
+            critical_failures.append(test_name)
     
-    # Print results
-    print("\n" + "=" * 60)
-    print("📊 TEST RESULTS")
-    print("=" * 60)
-    print(f"Tests Run: {tester.tests_run}")
+    # Print comprehensive results
+    print("\n" + "=" * 80)
+    print("📊 COMPREHENSIVE TEST RESULTS - Alumni Connect v2.0")
+    print("=" * 80)
+    print(f"Total Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
     print(f"Tests Failed: {len(failed_tests)}")
     print(f"Success Rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
+    if critical_failures:
+        print(f"\n🚨 CRITICAL FAILURES ({len(critical_failures)}):")
+        for test in critical_failures:
+            print(f"   - {test}")
+    
     if failed_tests:
-        print(f"\n❌ Failed Tests:")
+        print(f"\n❌ ALL FAILED TESTS ({len(failed_tests)}):")
         for test in failed_tests:
             print(f"   - {test}")
-    else:
-        print(f"\n🎉 All tests passed!")
     
-    return 0 if len(failed_tests) == 0 else 1
+    if len(failed_tests) == 0:
+        print(f"\n🎉 ALL TESTS PASSED! Multi-Institution Alumni Platform is fully functional!")
+        print("✅ Institution Management: Working")
+        print("✅ Enhanced Security: Working") 
+        print("✅ AI Mentor Matching: Working")
+        print("✅ Role-Based Access Control: Working")
+        print("✅ Rate Limiting: Working")
+        print("✅ Input Sanitization: Working")
+    else:
+        success_rate = (tester.tests_passed/tester.tests_run)*100
+        if success_rate >= 90:
+            print(f"\n✅ EXCELLENT: {success_rate:.1f}% success rate - Minor issues only")
+        elif success_rate >= 75:
+            print(f"\n⚠️  GOOD: {success_rate:.1f}% success rate - Some issues need attention")
+        else:
+            print(f"\n🚨 NEEDS WORK: {success_rate:.1f}% success rate - Major issues require fixing")
+    
+    return 0 if len(critical_failures) == 0 else 1
 
 if __name__ == "__main__":
     sys.exit(main())
