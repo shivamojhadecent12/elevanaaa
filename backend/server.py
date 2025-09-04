@@ -149,6 +149,11 @@ def parse_from_mongo(item):
         item['created_at'] = datetime.fromisoformat(item['created_at'])
     return item
 
+# Root route
+@api_router.get("/")
+async def root():
+    return {"message": "Alumni Connect API", "status": "running"}
+
 # Auth routes
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate):
