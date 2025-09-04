@@ -1,4 +1,3 @@
-# Fixed code:
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,8 +16,7 @@ import uuid
 from datetime import datetime, timezone
 import jwt
 from passlib.context import CryptContext
-# The following line is commented out because the library is not available.
-# from emergentintegrations.llm.chat import LlmChat, UserMessage
+import google.generativeai as genai
 import json
 import html
 import bleach
@@ -42,6 +40,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "alumni-connect-secret-key-production-2024"
 ALGORITHM = "HS256"
 
+# Gemini API setup
+# Ensure your GEMINI_API_KEY is set in the .env file
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -52,7 +54,7 @@ logger = logging.getLogger(__name__)
 # Correctly define lifespan and app
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup tasks (if any)
+    # Startup tasks
     logger.info("Application starting up...")
     yield
     # Shutdown tasks
@@ -87,10 +89,10 @@ class Institution(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     website: str
-    status: str = "Pending"  # "Pending", "Approved", "Rejected"
+    status: str = "Pending"
     institution_admin_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
+
     @field_validator('name')
     def validate_name(cls, v):
         v = sanitize_input(v)
@@ -122,8 +124,8 @@ class User(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
-    role: str  # "Student", "Alumni", "Institution_Admin", "Platform_Admin"
-    status: str = "Pending"  # "Pending", "Verified", "Rejected"
+    role: str
+    status: str = "Pending"
     institution_id: Optional[str] = None
     graduation_year: Optional[int] = None
     major: Optional[str] = None
@@ -302,27 +304,22 @@ async def root():
 async def register_institution(request: Request, institution_data: InstitutionCreate):
     """Register a new institution for approval"""
     
-    # Validate email
     if not validate_email(institution_data.admin_email):
         raise HTTPException(status_code=400, detail="Invalid email format")
     
-    # Check if institution already exists
     existing_institution = await db.institutions.find_one({"name": institution_data.name})
     if existing_institution:
         raise HTTPException(status_code=400, detail="Institution already registered")
     
-    # Check if admin email already exists
     existing_user = await db.users.find_one({"email": institution_data.admin_email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Create institution
     institution = Institution(
         name=institution_data.name,
         website=institution_data.website
     )
     
-    # Create pending admin user
     hashed_password = get_password_hash(institution_data.admin_password)
     admin_user = User(
         email=institution_data.admin_email,
@@ -333,7 +330,6 @@ async def register_institution(request: Request, institution_data: InstitutionCr
         institution_id=institution.id
     )
     
-    # Store in database
     institution_mongo = prepare_for_mongo(institution.dict())
     institution_mongo['institution_admin_id'] = admin_user.id
     await db.institutions.insert_one(institution_mongo)
@@ -359,7 +355,6 @@ async def get_pending_institutions(platform_admin: User = Depends(require_platfo
     """Platform admin: Get all pending institutions"""
     institutions = await db.institutions.find({"status": "Pending"}).to_list(length=None)
     
-    # Get admin details for each institution
     result = []
     for inst in institutions:
         admin_user = await db.users.find_one({"id": inst.get("institution_admin_id")})
@@ -376,7 +371,6 @@ async def get_pending_institutions(platform_admin: User = Depends(require_platfo
 @api_router.post("/admin/institutions/{institution_id}/approve")
 async def approve_institution(institution_id: str, platform_admin: User = Depends(require_platform_admin)):
     """Platform admin: Approve an institution"""
-    # Update institution status
     result = await db.institutions.update_one(
         {"id": institution_id},
         {"$set": {"status": "Approved"}}
@@ -385,7 +379,6 @@ async def approve_institution(institution_id: str, platform_admin: User = Depend
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Institution not found")
     
-    # Approve the institution admin
     await db.users.update_one(
         {"institution_id": institution_id, "role": "Institution_Admin"},
         {"$set": {"status": "Verified"}}
@@ -412,25 +405,20 @@ async def reject_institution(institution_id: str, platform_admin: User = Depends
 async def register(request: Request, user_data: UserCreate):
     """Register a new user"""
     
-    # Validate email
     if not validate_email(user_data.email):
         raise HTTPException(status_code=400, detail="Invalid email format")
     
-    # Check if user already exists
     existing_user = await db.users.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Validate institution exists and is approved
     if user_data.institution_id:
         institution = await db.institutions.find_one({"id": user_data.institution_id, "status": "Approved"})
         if not institution:
             raise HTTPException(status_code=400, detail="Invalid or unapproved institution")
     
-    # Hash password
     hashed_password = get_password_hash(user_data.password)
     
-    # Create user
     user_dict = user_data.dict()
     del user_dict['password']
     
@@ -440,7 +428,6 @@ async def register(request: Request, user_data: UserCreate):
     
     await db.users.insert_one(user_mongo)
     
-    # Create access token
     access_token = create_access_token(data={"sub": user.email})
     
     return {"access_token": access_token, "token_type": "bearer", "user": user}
@@ -474,7 +461,6 @@ async def get_users(
     
     query = {"status": "Verified"}
     
-    # Institution admins can only see users from their institution
     if current_user.role == "Institution_Admin":
         query["institution_id"] = current_user.institution_id
     
@@ -512,7 +498,6 @@ async def get_feed(current_user: User = Depends(get_current_user)):
     """Get posts feed (institution-scoped)"""
     
     query = {}
-    # Institution admins and regular users see posts from their institution only
     if current_user.role != "Platform_Admin":
         query["institution_id"] = current_user.institution_id
     
@@ -608,7 +593,7 @@ async def create_job(job_data: JobCreate, current_user: User = Depends(get_curre
     
     return job
 
-# AI Mentor Matching with enhanced reliability
+# AI Mentor Matching with enhanced reliability using Gemini
 @api_router.get("/ai/mentor-match")
 async def get_mentor_matches(current_user: User = Depends(get_current_user)):
     """Get AI-powered mentor matches (Students only)"""
@@ -620,7 +605,6 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Account must be verified to access mentor matching")
     
     try:
-        # Get potential mentors from same institution
         mentors = await db.users.find({
             "role": "Alumni",
             "is_mentor": True,
@@ -631,26 +615,75 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
         if not mentors:
             return {"matches": [], "message": "No mentors available in your institution", "ai_powered": False}
         
-        # Fallback to rule-based matching if AI is not available
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            student_profile = {
+                "major": current_user.major,
+                "graduation_year": current_user.graduation_year,
+                "location": current_user.location,
+                "industry": current_user.industry
+            }
+            
+            mentor_profiles = []
+            for mentor in mentors:
+                mentor_profiles.append({
+                    "id": mentor["id"],
+                    "name": f"{mentor['first_name']} {mentor['last_name']}",
+                    "major": mentor.get("major"),
+                    "industry": mentor.get("industry"),
+                    "location": mentor.get("location")
+                })
+            
+            prompt = f"""
+            Student Profile: {json.dumps(student_profile)}
+            Available Mentors: {json.dumps(mentor_profiles)}
+            
+            Analyze compatibility and return the top 5 mentor IDs as a JSON array in order of best match.
+            Consider: 1) Major alignment 2) Industry relevance 3) Location proximity 4) Career progression.
+            
+            Return format: ["mentor-id-1", "mentor-id-2", "mentor-id-3"]
+            """
+            
+            response = await model.generate_content_async(prompt)
+            
+            raw_text = response.text.strip()
+            if raw_text.startswith('```json'):
+                raw_text = raw_text[7:].strip()
+            if raw_text.endswith('```'):
+                raw_text = raw_text[:-3].strip()
+
+            mentor_ids = json.loads(raw_text)
+            
+            if isinstance(mentor_ids, list):
+                matched_mentors = []
+                for mentor_id in mentor_ids[:5]:
+                    mentor = await db.users.find_one({"id": mentor_id})
+                    if mentor:
+                        matched_mentors.append(User(**parse_from_mongo(mentor)))
+                
+                if matched_mentors:
+                    return {"matches": matched_mentors, "ai_powered": True}
+
+        except Exception as ai_error:
+            logging.warning(f"AI matching failed: {ai_error}")
+            
+        # Fallback to rule-based matching if AI fails
         rule_based_matches = []
         for mentor in mentors:
             score = 0
             
-            # Major match (highest priority)
             if mentor.get("major") == current_user.major:
                 score += 100
             
-            # Industry match
             if mentor.get("industry") == current_user.industry:
                 score += 50
             
-            # Location match
             if mentor.get("location") == current_user.location:
                 score += 25
             
             mentor['match_score'] = score
         
-        # Sort by score and take top 5
         sorted_mentors = sorted(mentors, key=lambda x: x.get('match_score', 0), reverse=True)
         rule_based_matches = [User(**parse_from_mongo(mentor)) for mentor in sorted_mentors[:5]]
         
@@ -660,7 +693,7 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
             "fallback": True,
             "message": "Matches generated using advanced compatibility algorithm"
         }
-        
+    
     except Exception as e:
         logging.error(f"Mentor matching error: {e}")
         raise HTTPException(status_code=500, detail="Mentor matching temporarily unavailable")
@@ -672,7 +705,6 @@ async def get_pending_users(institution_admin: User = Depends(require_institutio
     
     query = {"status": "Pending"}
     
-    # Institution admins can only see users from their institution
     if institution_admin.role == "Institution_Admin":
         query["institution_id"] = institution_admin.institution_id
     
@@ -683,12 +715,10 @@ async def get_pending_users(institution_admin: User = Depends(require_institutio
 async def verify_user(user_id: str, institution_admin: User = Depends(require_institution_admin)):
     """Institution admin: Verify a user"""
     
-    # Get user to verify institution match
     user = await db.users.find_one({"id": sanitize_input(user_id)})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Institution admins can only verify users from their institution
     if institution_admin.role == "Institution_Admin" and user["institution_id"] != institution_admin.institution_id:
         raise HTTPException(status_code=403, detail="Can only verify users from your institution")
     
@@ -714,18 +744,15 @@ async def reject_user(user_id: str, institution_admin: User = Depends(require_in
 async def create_platform_admin(admin_data: dict):
     """Create initial platform admin (one-time setup)"""
     
-    # Check if platform admin already exists
     existing_admin = await db.users.find_one({"role": "Platform_Admin"})
     if existing_admin:
         raise HTTPException(status_code=400, detail="Platform admin already exists")
     
-    # Validate required fields
     required_fields = ["email", "password", "first_name", "last_name"]
     for field in required_fields:
         if field not in admin_data:
             raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
     
-    # Create platform admin
     hashed_password = get_password_hash(admin_data["password"])
     
     admin_user = User(
