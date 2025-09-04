@@ -10,7 +10,7 @@ import os
 import logging
 import re
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
@@ -70,14 +70,14 @@ class Institution(BaseModel):
     institution_admin_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    @validator('name')
+    @field_validator('name')
     def validate_name(cls, v):
         v = sanitize_input(v)
         if not v or len(v) < 3:
             raise ValueError('Institution name must be at least 3 characters')
         return v
     
-    @validator('website')
+    @field_validator('website')
     def validate_website(cls, v):
         v = sanitize_input(v)
         if not v.startswith(('http://', 'https://')):
@@ -92,7 +92,7 @@ class InstitutionCreate(BaseModel):
     admin_email: EmailStr
     admin_password: str
     
-    @validator('name', 'admin_first_name', 'admin_last_name')
+    @field_validator('name', 'admin_first_name', 'admin_last_name')
     def sanitize_text_fields(cls, v):
         return sanitize_input(v)
 
@@ -123,19 +123,19 @@ class UserCreate(BaseModel):
     graduation_year: Optional[int] = None
     major: Optional[str] = None
     
-    @validator('first_name', 'last_name', 'major')
+    @field_validator('first_name', 'last_name', 'major')
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
         return v
     
-    @validator('password')
+    @field_validator('password')
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
         return v
     
-    @validator('role')
+    @field_validator('role')
     def validate_role(cls, v):
         valid_roles = ["Student", "Alumni"]
         if v not in valid_roles:
@@ -152,7 +152,7 @@ class UserProfile(BaseModel):
     is_mentor: Optional[bool] = None
     profile_picture_url: Optional[str] = None
     
-    @validator('industry', 'location')
+    @field_validator('industry', 'location')
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
@@ -171,7 +171,7 @@ class Post(BaseModel):
 class PostCreate(BaseModel):
     content: str
     
-    @validator('content')
+    @field_validator('content')
     def validate_content(cls, v):
         v = sanitize_input(v)
         if not v or len(v) < 1:
@@ -186,7 +186,7 @@ class Comment(BaseModel):
     text: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    @validator('text')
+    @field_validator('text')
     def validate_text(cls, v):
         v = sanitize_input(v)
         if not v or len(v) < 1:
@@ -209,7 +209,7 @@ class JobCreate(BaseModel):
     location: Optional[str] = None
     description: str
     
-    @validator('title', 'company', 'location', 'description')
+    @field_validator('title', 'company', 'location', 'description')
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
