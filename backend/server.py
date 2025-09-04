@@ -1,3 +1,4 @@
+# Fixed code:
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +17,14 @@ import uuid
 from datetime import datetime, timezone
 import jwt
 from passlib.context import CryptContext
-#from emergentintegrations.llm.chat import LlmChat, UserMessage
+# The following line is commented out because the library is not available.
+# from emergentintegrations.llm.chat import LlmChat, UserMessage
 import json
 import html
 import bleach
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
 
+# Define the root directory
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -40,8 +42,25 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "alumni-connect-secret-key-production-2024"
 ALGORITHM = "HS256"
 
-# Create the main app
-app = FastAPI(title="Alumni Connect API", version="2.0.0")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Correctly define lifespan and app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup tasks (if any)
+    logger.info("Application starting up...")
+    yield
+    # Shutdown tasks
+    logger.info("Application shutting down...")
+    client.close()
+
+# Create the main app with the lifespan context manager
+app = FastAPI(title="Alumni Connect API", version="2.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -612,61 +631,7 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
         if not mentors:
             return {"matches": [], "message": "No mentors available in your institution", "ai_powered": False}
         
-        # Try AI matching first
-        try:
-            chat = LlmChat(
-                api_key=os.environ.get('EMERGENT_LLM_KEY'),
-                session_id=f"mentor-match-{current_user.id}",
-                system_message="You are an AI mentor matching system. Analyze student and mentor profiles to suggest the best matches based on major, industry, location, and career alignment. Return ONLY a JSON array of mentor IDs in ranked order."
-            ).with_model("gemini", "gemini-2.0-flash")
-            
-            # Prepare data for AI analysis
-            student_profile = {
-                "major": current_user.major,
-                "graduation_year": current_user.graduation_year,
-                "location": current_user.location,
-                "industry": current_user.industry
-            }
-            
-            mentor_profiles = []
-            for mentor in mentors:
-                mentor_profiles.append({
-                    "id": mentor["id"],
-                    "name": f"{mentor['first_name']} {mentor['last_name']}",
-                    "major": mentor.get("major"),
-                    "industry": mentor.get("industry"),
-                    "location": mentor.get("location")
-                })
-            
-            prompt = f"""
-            Student Profile: {json.dumps(student_profile)}
-            Available Mentors: {json.dumps(mentor_profiles)}
-            
-            Analyze compatibility and return the top 5 mentor IDs as a JSON array in order of best match.
-            Consider: 1) Major alignment 2) Industry relevance 3) Location proximity 4) Career progression
-            
-            Return format: ["mentor-id-1", "mentor-id-2", "mentor-id-3"]
-            """
-            
-            user_message = UserMessage(text=prompt)
-            response = await chat.send_message(user_message)
-            
-            # Parse AI response
-            mentor_ids = json.loads(response.strip())
-            if isinstance(mentor_ids, list):
-                matched_mentors = []
-                for mentor_id in mentor_ids[:5]:
-                    mentor = await db.users.find_one({"id": mentor_id})
-                    if mentor:
-                        matched_mentors.append(User(**parse_from_mongo(mentor)))
-                
-                if matched_mentors:
-                    return {"matches": matched_mentors, "ai_powered": True}
-        
-        except Exception as ai_error:
-            logging.warning(f"AI matching failed: {ai_error}")
-        
-        # Fallback to rule-based matching
+        # Fallback to rule-based matching if AI is not available
         rule_based_matches = []
         for mentor in mentors:
             score = 0
@@ -793,20 +758,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-#@app.on_event("shutdown")
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-    client.close()
-
-app = FastAPI(title="Alumni Connect API", version="2.0.0", lifespan=lifespan)
-async def shutdown_db_client():
-    client.close()
