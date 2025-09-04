@@ -20,6 +20,8 @@ from passlib.context import CryptContext
 import json
 import html
 import bleach
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -799,6 +801,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-@app.on_event("shutdown")
+#@app.on_event("shutdown")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    client.close()
+
+app = FastAPI(title="Alumni Connect API", version="2.0.0", lifespan=lifespan)
 async def shutdown_db_client():
     client.close()
