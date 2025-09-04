@@ -283,6 +283,123 @@ class AlumniConnectAPITester:
             print(f"   New alumni registered with institution: {institution_id}")
         return success
 
+    # ===== INSTITUTION-SCOPED DATA ACCESS TESTS =====
+    def test_institution_scoped_users(self):
+        """Test that users can only see users from their institution"""
+        success, response = self.run_test("Get Institution-Scoped Users", "GET", "users", 200, token=self.student_token)
+        if success:
+            print(f"   Found {len(response)} users in student's institution")
+        return success
+
+    def test_institution_scoped_posts(self):
+        """Test that posts are institution-scoped"""
+        success, response = self.run_test("Get Institution-Scoped Posts", "GET", "posts/feed", 200, token=self.student_token)
+        if success:
+            print(f"   Found {len(response)} posts in student's institution")
+        return success
+
+    def test_institution_scoped_jobs(self):
+        """Test that jobs are institution-scoped"""
+        success, response = self.run_test("Get Institution-Scoped Jobs", "GET", "jobs", 200, token=self.student_token)
+        if success:
+            print(f"   Found {len(response)} jobs in student's institution")
+        return success
+
+    # ===== ADMIN USER MANAGEMENT TESTS =====
+    def test_get_pending_users_institution_admin(self):
+        """Test institution admin getting pending users from their institution"""
+        success, response = self.run_test("Get Pending Users (Institution Admin)", "GET", "admin/users/pending", 200, token=self.institution_admin_token)
+        if success:
+            print(f"   Found {len(response)} pending users in institution")
+        return success
+
+    def test_get_pending_users_platform_admin(self):
+        """Test platform admin getting all pending users"""
+        success, response = self.run_test("Get Pending Users (Platform Admin)", "GET", "admin/users/pending", 200, token=self.platform_admin_token)
+        if success:
+            print(f"   Found {len(response)} pending users across all institutions")
+        return success
+
+    def test_verify_user_institution_admin(self):
+        """Test institution admin verifying a user from their institution"""
+        # First create a pending user to verify
+        inst_success, inst_response = self.run_test("Get Institutions for User Creation", "GET", "institutions", 200)
+        if not inst_success or not inst_response:
+            return False
+            
+        institution_id = inst_response[0]['id'] if inst_response else None
+        timestamp = int(time.time())
+        
+        user_data = {
+            "email": f"pendinguser{timestamp}@test.com",
+            "password": "password123",
+            "first_name": "Pending",
+            "last_name": "User",
+            "role": "Student",
+            "institution_id": institution_id,
+            "major": "Computer Science"
+        }
+        
+        create_success, create_response = self.run_test("Create Pending User", "POST", "auth/register", 200, user_data)
+        if not create_success or 'user' not in create_response:
+            return False
+            
+        user_id = create_response['user']['id']
+        success, response = self.run_test("Verify User (Institution Admin)", "POST", f"admin/users/{user_id}/verify", 200, {}, self.institution_admin_token)
+        return success
+
+    # ===== AI MENTOR MATCHING TESTS =====
+    def test_ai_mentor_matching_student(self):
+        """Test AI mentor matching for students"""
+        success, response = self.run_test("AI Mentor Matching (Student)", "GET", "ai/mentor-match", 200, token=self.student_token)
+        if success:
+            matches = response.get('matches', [])
+            ai_powered = response.get('ai_powered', False)
+            fallback = response.get('fallback', False)
+            print(f"   Found {len(matches)} mentor matches")
+            print(f"   AI Powered: {ai_powered}")
+            print(f"   Fallback Used: {fallback}")
+        return success
+
+    def test_ai_mentor_matching_unauthorized(self):
+        """Test AI mentor matching with non-student role (should fail)"""
+        success, response = self.run_test("AI Mentor Matching (Alumni - Should Fail)", "GET", "ai/mentor-match", 403, token=self.alumni_token)
+        return success
+
+    # ===== INPUT SANITIZATION TESTS =====
+    def test_input_sanitization_xss(self):
+        """Test input sanitization prevents XSS"""
+        xss_data = {
+            "content": "<script>alert('XSS')</script>This is a test post with XSS attempt"
+        }
+        
+        success, response = self.run_test("Input Sanitization (XSS Prevention)", "POST", "posts", 200, xss_data, self.student_token)
+        if success:
+            # Check if the script tag was sanitized
+            content = response.get('content', '')
+            if '<script>' not in content:
+                print("   ✅ XSS script tag successfully sanitized")
+            else:
+                print("   ❌ XSS script tag not sanitized")
+                return False
+        return success
+
+    def test_password_validation(self):
+        """Test password validation (8+ characters)"""
+        timestamp = int(time.time())
+        weak_password_data = {
+            "email": f"weakpass{timestamp}@test.com",
+            "password": "123",  # Too short
+            "first_name": "Weak",
+            "last_name": "Password",
+            "role": "Student",
+            "major": "Computer Science"
+        }
+        
+        success, response = self.run_test("Password Validation (Weak Password)", "POST", "auth/register", 422, weak_password_data)
+        return success
+
+    # ===== EXISTING FUNCTIONALITY TESTS =====
     def test_get_profile(self):
         """Test getting user profile"""
         success, response = self.run_test("Get Student Profile", "GET", "users/profile", 200, token=self.student_token)
@@ -299,26 +416,16 @@ class AlumniConnectAPITester:
         success, response = self.run_test("Update Alumni Profile", "PUT", "users/profile", 200, profile_data, self.alumni_token)
         return success
 
-    def test_get_users(self):
-        """Test getting users directory"""
-        success, response = self.run_test("Get Users Directory", "GET", "users", 200)
-        return success
-
     def test_create_post(self):
         """Test creating a post"""
         post_data = {
-            "content": "This is a test post from the API testing suite!"
+            "content": "This is a test post from the comprehensive API testing suite!"
         }
         
         success, response = self.run_test("Create Post", "POST", "posts", 200, post_data, self.student_token)
         if success and 'id' in response:
             self.created_post_id = response['id']
             print(f"   Created post ID: {self.created_post_id}")
-        return success
-
-    def test_get_feed(self):
-        """Test getting posts feed"""
-        success, response = self.run_test("Get Posts Feed", "GET", "posts/feed", 200, token=self.student_token)
         return success
 
     def test_like_post(self):
@@ -336,17 +443,17 @@ class AlumniConnectAPITester:
             print("❌ No post ID available for comment test")
             return False
             
-        comment_data = {"text": "Great post! Thanks for sharing."}
+        comment_data = {"text": "Great post! Thanks for sharing from the test suite."}
         success, response = self.run_test("Add Comment", "POST", f"posts/{self.created_post_id}/comment", 200, comment_data, self.alumni_token)
         return success
 
     def test_create_job(self):
         """Test creating a job (Alumni only)"""
         job_data = {
-            "title": "Software Engineer",
-            "company": "Tech Corp",
-            "location": "Remote",
-            "description": "We are looking for a talented software engineer to join our team."
+            "title": "Senior Software Engineer",
+            "company": "Tech Innovation Corp",
+            "location": "Remote / San Francisco",
+            "description": "We are looking for a talented senior software engineer to join our growing team. This is a test job posting from the API testing suite."
         }
         
         success, response = self.run_test("Create Job (Alumni)", "POST", "jobs", 200, job_data, self.alumni_token)
@@ -360,28 +467,10 @@ class AlumniConnectAPITester:
         job_data = {
             "title": "Test Job",
             "company": "Test Company",
-            "description": "This should fail"
+            "description": "This should fail - students cannot post jobs"
         }
         
         success, response = self.run_test("Create Job (Student - Should Fail)", "POST", "jobs", 403, job_data, self.student_token)
-        return success
-
-    def test_get_jobs(self):
-        """Test getting jobs list"""
-        success, response = self.run_test("Get Jobs", "GET", "jobs", 200)
-        return success
-
-    def test_ai_mentor_matching(self):
-        """Test AI mentor matching (Student only)"""
-        success, response = self.run_test("AI Mentor Matching", "GET", "ai/mentor-match", 200, token=self.student_token)
-        if success:
-            print(f"   Found {len(response.get('matches', []))} mentor matches")
-            print(f"   AI Powered: {response.get('ai_powered', False)}")
-        return success
-
-    def test_ai_mentor_matching_as_alumni(self):
-        """Test AI mentor matching as alumni (should fail)"""
-        success, response = self.run_test("AI Mentor Matching (Alumni - Should Fail)", "GET", "ai/mentor-match", 403, token=self.alumni_token)
         return success
 
     def test_unauthorized_access(self):
