@@ -28,3 +28,4 @@ redis
 bleach
 google-generativeai>=0.8.0
 protobuf==4.25.3
+bcrypt>=4.1.2
