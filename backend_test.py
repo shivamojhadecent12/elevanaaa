@@ -1,19 +1,22 @@
 import requests
 import sys
 import json
+import time
 from datetime import datetime
 
 class AlumniConnectAPITester:
     def __init__(self, base_url="https://alumni-connect-15.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
+        self.platform_admin_token = None
+        self.institution_admin_token = None
         self.student_token = None
         self.alumni_token = None
-        self.admin_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.created_post_id = None
         self.created_job_id = None
+        self.created_institution_id = None
         self.student_user_id = None
         self.alumni_user_id = None
 
