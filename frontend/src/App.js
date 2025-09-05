@@ -86,7 +86,7 @@ const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
         <div className="max-w-5xl mx-auto text-center text-white">
           <div className="mb-8 backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20">
             <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Alumni Connect
+              Elevanaa
             </h1>
             <p className="text-xl mb-8 text-blue-100">
               Multi-Institution Alumni Network. Connect globally, grow professionally. AI-powered mentorship matching.
@@ -503,7 +503,7 @@ const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser })
       <DialogContent className="sm:max-w-md bg-slate-900 text-white border-slate-700">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl">
-            {mode === 'login' ? 'Welcome Back' : 'Join Alumni Connect'}
+            {mode === 'login' ? 'Welcome Back' : 'Join Elevanaa'}
           </DialogTitle>
         </DialogHeader>
         
@@ -871,7 +871,7 @@ const Header = ({ user, onLogout, currentView, setCurrentView }) => {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-bold text-white">Alumni Connect v2.0</h1>
+            <h1 className="text-2xl font-bold text-white">Elevanaa</h1>
             
             <nav className="hidden md:flex space-x-6">
               <NavButton active={currentView === 'feed'} onClick={() => setCurrentView('feed')}>
