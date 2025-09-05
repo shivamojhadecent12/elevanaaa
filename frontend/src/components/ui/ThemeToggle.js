@@ -1,7 +1,7 @@
 import React from 'react';
-import useDarkMode from '../hooks/use-dark-mode';
+import useDarkMode from '../../hooks/use-dark-mode'; // Corrected import path
 import { FaSun, FaMoon } from 'react-icons/fa';
-import { Button } from './ui/button';
+import { Button } from './button';
 
 const ThemeToggle = () => {
   const [isDarkMode, toggleDarkMode] = useDarkMode();
