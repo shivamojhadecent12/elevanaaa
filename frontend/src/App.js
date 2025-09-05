@@ -60,104 +60,104 @@ const Globe = () => {
 
 // Landing Page Component
 const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-      {/* 3D Background */}
-      <div className="absolute inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
-          <Suspense fallback={null}>
-            <ambientLight intensity={0.4} />
-            <pointLight position={[10, 10, 10]} intensity={1} />
-            <Globe />
-            <Stars
-              radius={100}
-              depth={50}
-              count={5000}
-              factor={4}
-              saturation={0}
-              fade
-            />
-            <OrbitControls enableZoom={false} enablePan={false} />
-          </Suspense>
-      </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
+      {/* 3D Background */}
+      <div className="absolute inset-0 z-0">
+        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
+          <Suspense fallback={null}>
+            <ambientLight intensity={0.4} />
+            <pointLight position={[10, 10, 10]} intensity={1} />
+            <Globe />
+            <Stars
+              radius={100}
+              depth={50}
+              count={5000}
+              factor={4}
+              saturation={0}
+              fade
+            />
+            <OrbitControls enableZoom={false} enablePan={false} />
+          </Suspense>
+        </Canvas> {/* <--- The closing tag is here */}
+      </div>
 
-      {/* Content Overlay */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
-        <div className="max-w-5xl mx-auto text-center text-white">
-          <div className="mb-8 backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20">
-            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Alumni Connect
-            </h1>
-            <p className="text-xl mb-8 text-blue-100">
-              Multi-Institution Alumni Network. Connect globally, grow professionally. AI-powered mentorship matching.
-            </p>
-            
-            <div className="flex gap-4 justify-center flex-wrap">
-              <Button 
-                onClick={onLogin}
-                size="lg" 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full"
-              >
-                Sign In
-              </Button>
-              <Button 
-                onClick={onRegister}
-                variant="outline" 
-                size="lg"
-                className="border-white/30 text-white hover:bg-white/10 px-8 py-3 rounded-full"
-              >
-                Join Network
-              </Button>
-              <Button 
-                onClick={onRegisterInstitution}
-                variant="outline" 
-                size="lg"
-                className="border-green-400/50 text-green-400 hover:bg-green-400/10 px-8 py-3 rounded-full"
-              >
-                Register Institution
-              </Button>
-            </div>
-          </div>
+      {/* Content Overlay */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
+        <div className="max-w-5xl mx-auto text-center text-white">
+          <div className="mb-8 backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20">
+            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Alumni Connect
+            </h1>
+            <p className="text-xl mb-8 text-blue-100">
+              Multi-Institution Alumni Network. Connect globally, grow professionally. AI-powered mentorship matching.
+            </p>
+            
+            <div className="flex gap-4 justify-center flex-wrap">
+              <Button 
+                onClick={onLogin}
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full"
+              >
+                Sign In
+              </Button>
+              <Button 
+                onClick={onRegister}
+                variant="outline" 
+                size="lg"
+                className="border-white/30 text-white hover:bg-white/10 px-8 py-3 rounded-full"
+              >
+                Join Network
+              </Button>
+              <Button 
+                onClick={onRegisterInstitution}
+                variant="outline" 
+                size="lg"
+                className="border-green-400/50 text-green-400 hover:bg-green-400/10 px-8 py-3 rounded-full"
+              >
+                Register Institution
+              </Button>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">🏫</div>
-                <h3 className="text-lg font-semibold mb-2">Multi-Institution</h3>
-                <p className="text-sm text-blue-100">Connect across universities and institutions globally</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">🌐</div>
-                <h3 className="text-lg font-semibold mb-2">Global Network</h3>
-                <p className="text-sm text-blue-100">3D visualization of your worldwide alumni connections</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">🤖</div>
-                <h3 className="text-lg font-semibold mb-2">AI Matching</h3>
-                <p className="text-sm text-blue-100">Gemini 2.0 powered mentor recommendations</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">💼</div>
-                <h3 className="text-lg font-semibold mb-2">Career Growth</h3>
-                <p className="text-sm text-blue-100">Institution-specific job opportunities and networking</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">🏫</div>
+                <h3 className="text-lg font-semibold mb-2">Multi-Institution</h3>
+                <p className="text-sm text-blue-100">Connect across universities and institutions globally</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">🌐</div>
+                <h3 className="text-lg font-semibold mb-2">Global Network</h3>
+                <p className="text-sm text-blue-100">3D visualization of your worldwide alumni connections</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">🤖</div>
+                <h3 className="text-lg font-semibold mb-2">AI Matching</h3>
+                <p className="text-sm text-blue-100">Gemini 2.0 powered mentor recommendations</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">💼</div>
+                <h3 className="text-lg font-semibold mb-2">Career Growth</h3>
+                <p className="text-sm text-blue-100">Institution-specific job opportunities and networking</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
-
 // Institution Registration Modal
 const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
