@@ -158,6 +158,7 @@ const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
     </div>
   );
 };
+
 // Institution Registration Modal
 const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -175,12 +176,23 @@ const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
     setLoading(true);
 
     try {
-      const endpoint = 'auth/register';
+      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
       const response = await axios.post(`${API}/${endpoint}`, formData);
-      toast.success(response.data.message);
+
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      onAuth(response.data.user, response.data.access_token);
+
+      if (mode === 'register') {
+        toast.success('Account created! Pending institution admin approval.');
+      } else {
+        toast.success('Welcome back!');
+      }
+
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registration failed');
+      toast.error(error.response?.data?.detail || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -882,40 +894,1044 @@ const Dashboard = ({ user, token, onLogout, refreshUser }) => {
   );
 };
 
-const ChatListView = ({ user, token, setCurrentView, chats }) => {
-  if (chats.length === 0) {
-    return (
-      <EmptyState
-        icon="💬"
-        title="No Active Chats"
-        description="You don't have any active chats. Start a conversation by accepting a mentorship request."
-      />
-    );
+const Header = ({ user, onLogout, currentView, setCurrentView, chatsCount }) => {
+  const getRoleBadgeColor = (role) => {
+    switch(role) {
+      case 'Platform_Admin': return 'bg-red-600';
+      case 'Institution_Admin': return 'bg-purple-600';
+      case 'Alumni': return 'bg-green-600';
+      case 'Student': return 'bg-blue-600';
+      default: return 'bg-gray-600';
+    }
+  };
+
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-lg border-b border-slate-700">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-8">
+            <h1 className="text-2xl font-bold text-white">Elevanaa</h1>
+            
+            <nav className="hidden md:flex space-x-6">
+              <NavButton active={currentView === 'feed'} onClick={() => setCurrentView('feed')}>
+                Feed
+              </NavButton>
+              <NavButton active={currentView === 'directory'} onClick={() => setCurrentView('directory')}>
+                Directory
+              </NavButton>
+              {user.role === 'Student' && user.status === 'Verified' && (
+                <NavButton active={currentView === 'mentors'} onClick={() => setCurrentView('mentors')}>
+                  Find Mentors
+                </NavButton>
+              )}
+              {(user.role === 'Alumni' && user.is_mentor) && (
+                <NavButton active={currentView === 'mentor-requests'} onClick={() => setCurrentView('mentor-requests')}>
+                  Mentorship
+                </NavButton>
+              )}
+              <NavButton active={currentView === 'jobs'} onClick={() => setCurrentView('jobs')}>
+                Jobs
+              </NavButton>
+              {(user.role === 'Institution_Admin' || user.role === 'Platform_Admin') && (
+                <NavButton active={currentView === 'admin'} onClick={() => setCurrentView('admin')}>
+                  Admin
+                </NavButton>
+              )}
+               {chatsCount > 0 && (
+                <NavButton active={currentView === 'chat-list'} onClick={() => setCurrentView('chat-list')}>
+                  Chats ({chatsCount})
+                </NavButton>
+              )}
+            </nav>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <Badge className={`${getRoleBadgeColor(user.role)} text-white`}>
+              {user.role.replace('_', ' ')}
+            </Badge>
+            {user.status === 'Pending' && (
+              <Badge variant="secondary" className="bg-yellow-600 text-white">
+                Pending
+              </Badge>
+            )}
+            <Button variant="ghost" onClick={() => setCurrentView('profile')} className="text-white">
+              Profile
+            </Button>
+            <Button variant="ghost" onClick={onLogout} className="text-white">
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+const NavButton = ({ children, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`px-4 py-2 rounded-lg transition-all ${
+      active 
+        ? 'bg-blue-600 text-white' 
+        : 'text-gray-300 hover:text-white hover:bg-slate-800'
+    }`}
+  >
+    {children}
+  </button>
+);
+
+// Feed View with Empty State
+const FeedView = ({ user, token }) => {
+  const [posts, setPosts] = useState([]);
+  const [newPost, setNewPost] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setError(null);
+      const response = await axios.get(`${API}/posts/feed`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPosts(response.data);
+    } catch (error) {
+      setError('Failed to load posts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreatePost = async (e) => {
+    e.preventDefault();
+    if (!newPost.trim()) return;
+
+    if (user.status !== 'Verified') {
+      toast.error('Account must be verified to post');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/posts`, { content: newPost }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNewPost('');
+      fetchPosts();
+      toast.success('Post created!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create post');
+    }
+  };
+
+  const handleLike = async (postId) => {
+    try {
+      await axios.post(`${API}/posts/${postId}/like`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchPosts();
+    } catch (error) {
+      toast.error('Failed to like post');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white text-center py-12">Loading feed...</div>;
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to Load Feed" description={error} onRetry={fetchPosts} />;
   }
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-6">
+      {user.status === 'Verified' && (
+        <Card className="bg-slate-800 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Share an Update</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreatePost} className="space-y-4">
+              <Textarea
+                value={newPost}
+                onChange={(e) => setNewPost(e.target.value)}
+                placeholder="What's happening in your professional journey?"
+                className="bg-slate-700 border-slate-600 text-white"
+                rows="3"
+                maxLength="2000"
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">{newPost.length}/2000</span>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                  Share Post
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {posts.length === 0 ? (
+        <EmptyState
+          icon="📝"
+          title="No Posts Yet"
+          description="Start connecting with your alumni network by sharing your first post or wait for others to share updates."
+          action={user.status === 'Verified' ? null : (
+            <p className="text-sm text-gray-500">Verify your account to start posting</p>
+          )}
+        />
+      ) : (
+        posts.map((post) => (
+          <Card key={post.id} className="bg-slate-800 border-slate-700">
+            <CardContent className="p-6">
+              <div className="flex items-start space-x-4">
+                <Avatar>
+                  <AvatarFallback className="bg-blue-600 text-white">
+                    {post.author_name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h4 className="font-semibold text-white">{post.author_name}</h4>
+                    <span className="text-gray-400 text-sm">
+                      {new Date(post.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-gray-200 mb-4 whitespace-pre-wrap">{post.content}</p>
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleLike(post.id)}
+                      className={`text-gray-400 hover:text-red-400 ${
+                        post.likes.includes(user.id) ? 'text-red-400' : ''
+                      }`}
+                    >
+                      ❤️ {post.likes.length}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-gray-400">
+                      💬 {post.comments.length}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+};
+
+// Directory View with Enhanced Filtering
+const DirectoryView = ({ user, token }) => {
+  const [users, setUsers] = useState([]);
+  const [filters, setFilters] = useState({ major: '', industry: '', role: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [filters]);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      setError(null);
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) params.append(key, filters[key]);
+      });
+      
+      const response = await axios.get(`${API}/users?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(response.data);
+    } catch (error) {
+      setError('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (error) {
+    return <ErrorState title="Failed to Load Directory" description={error} onRetry={fetchUsers} />;
+  }
+
+  return (
+    <div className="space-y-6">
       <Card className="bg-slate-800 border-slate-700">
         <CardHeader>
-          <CardTitle className="text-white">Your Chats</CardTitle>
+          <CardTitle className="text-white">Alumni Directory</CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-white">Major</Label>
+              <Input
+                value={filters.major}
+                onChange={(e) => setFilters({...filters, major: e.target.value})}
+                placeholder="Filter by major"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Industry</Label>
+              <Input
+                value={filters.industry}
+                onChange={(e) => setFilters({...filters, industry: e.target.value})}
+                placeholder="Filter by industry"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Role</Label>
+              <Select value={filters.role} onValueChange={(value) => setFilters({...filters, role: value})}>
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue placeholder="All roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All roles</SelectItem>
+                  <SelectItem value="Student">Students</SelectItem>
+                  <SelectItem value="Alumni">Alumni</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {loading ? (
+        <div className="text-white text-center py-12">Loading directory...</div>
+      ) : users.length === 0 ? (
+        <EmptyState
+          icon="👥"
+          title="No Users Found"
+          description="Try adjusting your filters or check back later as more users join your institution."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {users.map((person) => (
+            <Card key={person.id} className="bg-slate-800 border-slate-700 card-hover">
+              <CardContent className="p-6 text-center">
+                <Avatar className="w-16 h-16 mx-auto mb-4">
+                  <AvatarFallback className="bg-blue-600 text-white text-lg">
+                    {person.first_name[0]}{person.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="text-white font-semibold mb-2">
+                  {person.first_name} {person.last_name}
+                </h3>
+                <div className="space-y-2">
+                  <Badge className="bg-blue-600 text-white">{person.role}</Badge>
+                  {person.major && (
+                    <p className="text-gray-300 text-sm">{person.major}</p>
+                  )}
+                  {person.industry && (
+                    <p className="text-gray-400 text-sm">{person.industry}</p>
+                  )}
+                  {person.location && (
+                    <p className="text-gray-400 text-sm">📍 {person.location}</p>
+                  )}
+                  {person.is_mentor && (
+                    <Badge variant="secondary" className="bg-green-600 text-white">
+                      Mentor Available
+                    </Badge>
+                  )}
+                </div>
+                <Button className="mt-4 bg-blue-600 hover:bg-blue-700">
+                  Connect
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Enhanced Mentor View with AI Status
+const MentorView = ({ user, token, setCurrentView }) => {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [aiPowered, setAiPowered] = useState(false);
+  const [error, setError] = useState(null);
+
+  const findMentors = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API}/ai/mentor-match`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMatches(response.data.matches);
+      setAiPowered(response.data.ai_powered);
+      toast.success(`Found ${response.data.matches.length} mentor matches!`);
+    } catch (error) {
+      setError('Failed to find mentors');
+      toast.error(error.response?.data?.detail || 'Failed to find mentors');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestMentorship = async (mentorId) => {
+    try {
+      const response = await axios.post(
+        `${API}/mentorship/request/${mentorId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(response.data.message);
+      // Optional: Give student an immediate link to the new chat
+      if (response.data.chat_id) {
+        setCurrentView(`chat-${response.data.chat_id}`);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send mentorship request');
+    }
+  };
+
+  if (error) {
+    return <ErrorState title="Mentor Matching Error" description={error} onRetry={findMentors} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">AI-Powered Mentor Matching</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="text-gray-300 mb-6">
+            Get personalized mentor recommendations using Gemini 2.0 AI, analyzing your profile, major, and career goals for optimal matches.
+          </p>
+          <Button 
+            onClick={findMentors}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {loading ? 'Finding Mentors...' : '🤖 Find My Mentors'}
+          </Button>
+          {aiPowered && (
+            <div className="mt-4">
+              <Badge className="bg-green-600 text-white">✨ AI-Powered Results</Badge>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {matches.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {matches.map((mentor) => (
+            <Card key={mentor.id} className="bg-slate-800 border-slate-700 card-hover">
+              <CardContent className="p-6 text-center">
+                <Avatar className="w-16 h-16 mx-auto mb-4">
+                  <AvatarFallback className="bg-green-600 text-white text-lg">
+                    {mentor.first_name[0]}{mentor.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="text-white font-semibold mb-2">
+                  {mentor.first_name} {mentor.last_name}
+                </h3>
+                <div className="space-y-2">
+                  <Badge className="bg-green-600 text-white">Mentor</Badge>
+                  {mentor.major && (
+                    <p className="text-gray-300 text-sm">{mentor.major}</p>
+                  )}
+                  {mentor.industry && (
+                    <p className="text-gray-400 text-sm">{mentor.industry}</p>
+                  )}
+                  {mentor.location && (
+                    <p className="text-gray-400 text-sm">📍 {mentor.location}</p>
+                  )}
+                </div>
+                <Button 
+                    className="mt-4 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleRequestMentorship(mentor.id)} 
+                >
+                  Request Mentorship
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : !loading && (
+        <EmptyState
+          icon="🎯"
+          title="No Mentors Found Yet"
+          description="Click the button above to discover mentors matched to your profile and career goals."
+        />
+      )}
+    </div>
+  );
+};
+
+// Enhanced Jobs View
+const JobsView = ({ user, token }) => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateJob, setShowCreateJob] = useState(false);
+  const [showApplyJob, setShowApplyJob] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      setError(null);
+      const response = await axios.get(`${API}/jobs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setJobs(response.data);
+    } catch (error) {
+      setError('Failed to load jobs');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleApplyClick = (jobId) => {
+    setSelectedJobId(jobId);
+    setShowApplyJob(true);
+  };
+
+  if (error) {
+    return <ErrorState title="Failed to Load Jobs" description={error} onRetry={fetchJobs} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-white">Job Board</CardTitle>
+          {(user.role === 'Alumni' || user.role === 'Institution_Admin') && user.status === 'Verified' && (
+            <Button 
+              onClick={() => setShowCreateJob(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Post Job
+            </Button>
+          )}
+        </CardHeader>
+      </Card>
+
+      {loading ? (
+        <div className="text-white text-center py-12">Loading jobs...</div>
+      ) : jobs.length === 0 ? (
+        <EmptyState
+          icon="💼"
+          title="No Jobs Posted Yet"
+          description="Be the first to share job opportunities with your institution's network."
+          action={
+            (user.role === 'Alumni' || user.role === 'Institution_Admin') && user.status === 'Verified' ? (
+              <Button onClick={() => setShowCreateJob(true)} className="bg-blue-600 hover:bg-blue-700">
+                Post First Job
+              </Button>
+            ) : null
+          }
+        />
+      ) : (
+        <div className="space-y-4">
+          {jobs.map((job) => (
+            <Card key={job.id} className="bg-slate-800 border-slate-700 card-hover">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold text-lg mb-2">{job.title}</h3>
+                    <p className="text-blue-400 font-medium mb-2">{job.company}</p>
+                    {job.location && (
+                      <p className="text-gray-400 text-sm mb-4">📍 {job.location}</p>
+                    )}
+                    <p className="text-gray-300 mb-4 whitespace-pre-wrap">{job.description}</p>
+                    <p className="text-gray-500 text-sm">
+                      Posted on {new Date(job.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700 ml-4"
+                    onClick={() => handleApplyClick(job.id)}
+                  >
+                    Apply Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+      <CreateJobModal
+        isOpen={showCreateJob}
+        onClose={() => setShowCreateJob(false)}
+        token={token}
+        onJobPosted={fetchJobs}
+      />
+      <JobApplyModal
+        isOpen={showApplyJob}
+        onClose={() => setShowApplyJob(false)}
+        token={token}
+        jobId={selectedJobId}
+      />
+    </div>
+  );
+};
+// Enhanced Profile View
+const ProfileView = ({ user, token, refreshUser }) => {
+  const [profile, setProfile] = useState({
+    industry: user.industry || '',
+    location: user.location || '',
+    is_mentor: user.is_mentor || false,
+    profile_picture_url: user.profile_picture_url || ''
+  });
+
+  useEffect(() => {
+    setProfile({
+      industry: user.industry || '',
+      location: user.location || '',
+      is_mentor: user.is_mentor || false,
+      profile_picture_url: user.profile_picture_url || ''
+    });
+  }, [user]);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`${API}/users/profile`, profile, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      refreshUser();
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update profile');
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">Profile Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleUpdateProfile} className="space-y-6">
+            <div className="text-center mb-6">
+              <Avatar className="w-24 h-24 mx-auto mb-4">
+                <AvatarFallback className="bg-blue-600 text-white text-2xl">
+                  {user.first_name[0]}{user.last_name[0]}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="text-white text-xl font-semibold">
+                {user.first_name} {user.last_name}
+              </h2>
+              <div className="flex justify-center space-x-2 mt-2">
+                <Badge className="bg-blue-600 text-white">{user.role.replace('_', ' ')}</Badge>
+                <Badge className={user.status === 'Verified' ? 'bg-green-600' : 'bg-yellow-600'}>
+                  {user.status}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white">Email</Label>
+                <Input value={user.email} disabled className="bg-slate-700 border-slate-600 text-gray-400" />
+              </div>
+              <div>
+                <Label className="text-white">Major</Label>
+                <Input value={user.major || 'Not specified'} disabled className="bg-slate-700 border-slate-600 text-gray-400" />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-white">Industry</Label>
+              <Input
+                value={profile.industry}
+                onChange={(e) => setProfile({...profile, industry: e.target.value})}
+                placeholder="e.g., Technology, Finance, Healthcare"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+
+            <div>
+              <Label className="text-white">Location</Label>
+              <Input
+                value={profile.location}
+                onChange={(e) => setProfile({...profile, location: e.target.value})}
+                placeholder="e.g., San Francisco, CA"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+
+            {user.role === 'Alumni' && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_mentor"
+                  checked={profile.is_mentor}
+                  onChange={(e) => setProfile({...profile, is_mentor: e.target.checked})}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="is_mentor" className="text-white">
+                  Available as a mentor to students
+                </Label>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+              Update Profile
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Enhanced Admin View with Platform/Institution Separation
+const AdminView = ({ user, token }) => {
+  const [currentTab, setCurrentTab] = useState(user.role === 'Platform_Admin' ? 'institutions' : 'users');
+  
+  return (
+    <div className="space-y-6">
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">
+            {user.role === 'Platform_Admin' ? 'Platform Administration' : 'Institution Administration'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-300">
+            {user.role === 'Platform_Admin' 
+              ? 'Manage institutions and platform-wide settings.'
+              : 'Manage users and content within your institution.'
+            }
+          </p>
+        </CardContent>
+      </Card>
+
+      <Tabs value={currentTab} onValueChange={setCurrentTab}>
+        <TabsList className="bg-slate-800">
+          {user.role === 'Platform_Admin' && (
+            <TabsTrigger value="institutions" className="text-white">Institution Approvals</TabsTrigger>
+          )}
+          <TabsTrigger value="users" className="text-white">User Management</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="institutions">
+          <PlatformAdminInstitutions token={token} />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <UserManagement user={user} token={token} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+// Platform Admin Institution Management
+const PlatformAdminInstitutions = ({ token }) => {
+  const [pendingInstitutions, setPendingInstitutions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPendingInstitutions();
+  }, []);
+
+  const fetchPendingInstitutions = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/institutions/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingInstitutions(response.data);
+    } catch (error) {
+      toast.error('Failed to load pending institutions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (institutionId) => {
+    try {
+      await axios.post(`${API}/admin/institutions/${institutionId}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Institution approved successfully!');
+      fetchPendingInstitutions();
+    } catch (error) {
+      toast.error('Failed to approve institution');
+    }
+  };
+
+  const handleReject = async (institutionId) => {
+    try {
+      await axios.post(`${API}/admin/institutions/${institutionId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Institution rejected');
+      fetchPendingInstitutions();
+    } catch (error) {
+      toast.error('Failed to reject institution');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white text-center py-8">Loading pending institutions...</div>;
+  }
+
+  return (
+    <Card className="bg-slate-800 border-slate-700">
+      <CardHeader>
+        <CardTitle className="text-white">Pending Institution Approvals</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {pendingInstitutions.length === 0 ? (
+          <EmptyState
+            icon="🏫"
+            title="No Pending Institutions"
+            description="All institution registration requests have been processed."
+          />
+        ) : (
           <div className="space-y-4">
-            {chats.map(chat => (
-              <div 
-                key={chat.id} 
-                onClick={() => setCurrentView(`chat-${chat.id}`)}
-                className="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors cursor-pointer"
-              >
-                <div>
-                  <h4 className="text-white font-semibold">{chat.participants.find(p => p.id !== user.id)?.name || 'Unknown User'}</h4>
-                  <p className="text-gray-400 text-sm">Last message: {new Date(chat.messages[chat.messages.length - 1]?.created_at).toLocaleString()}</p>
+            {pendingInstitutions.map((institution) => (
+              <div key={institution.id} className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
+                <div className="flex-1">
+                  <h4 className="text-white font-semibold">{institution.name}</h4>
+                  <p className="text-gray-300 text-sm">{institution.website}</p>
+                  {institution.admin_details && (
+                    <p className="text-gray-400 text-sm">
+                      Admin: {institution.admin_details.name} ({institution.admin_details.email})
+                    </p>
+                  )}
+                  <p className="text-gray-500 text-xs">
+                    Submitted: {new Date(institution.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={() => handleApprove(institution.id)}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    Approve
+                  </Button>
+                  <Button 
+                    onClick={() => handleReject(institution.id)}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Reject
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// User Management Component
+const UserManagement = ({ user, token }) => {
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPendingUsers();
+  }, []);
+
+  const fetchPendingUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/users/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingUsers(response.data);
+    } catch (error) {
+      toast.error('Failed to load pending users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyUser = async (userId) => {
+    try {
+      await axios.post(`${API}/admin/users/${userId}/verify`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('User verified successfully!');
+      fetchPendingUsers();
+    } catch (error) {
+      toast.error('Failed to verify user');
+    }
+  };
+
+  const rejectUser = async (userId) => {
+    try {
+      await axios.post(`${API}/admin/users/${userId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('User rejected');
+      fetchPendingUsers();
+    } catch (error) {
+      toast.error('Failed to reject user');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white text-center py-8">Loading pending users...</div>;
+  }
+
+  return (
+    <Card className="bg-slate-800 border-slate-700">
+      <CardHeader>
+        <CardTitle className="text-white">
+          Pending User {user.role === 'Platform_Admin' ? 'Verifications' : 'Approvals'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {pendingUsers.length === 0 ? (
+          <EmptyState
+            icon="✅"
+            title="No Pending Users"
+            description="All user registration requests have been processed."
+          />
+        ) : (
+          <div className="space-y-4">
+            {pendingUsers.map((pendingUser) => (
+              <div key={pendingUser.id} className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
+                <div className="flex-1">
+                  <h4 className="text-white font-semibold">
+                    {pendingUser.first_name} {pendingUser.last_name}
+                  </h4>
+                  <p className="text-gray-300 text-sm">{pendingUser.email}</p>
+                  <div className="flex space-x-2 mt-1">
+                    <Badge className="bg-blue-600 text-white text-xs">{pendingUser.role}</Badge>
+                    {pendingUser.major && (
+                      <Badge variant="secondary" className="text-xs">{pendingUser.major}</Badge>
+                    )}
+                  </div>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Registered: {new Date(pendingUser.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={() => verifyUser(pendingUser.id)}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    Approve
+                  </Button>
+                  <Button 
+                    onClick={() => rejectUser(pendingUser.id)}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Main App Component
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showInstitutionRegistration, setShowInstitutionRegistration] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleAuth = (userData, accessToken) => {
+    setUser(userData);
+    setToken(accessToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setToken(null);
+  };
+  
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get(`${API}/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const refreshedUser = response.data;
+      setUser(refreshedUser);
+      localStorage.setItem('user', JSON.stringify(refreshedUser));
+      console.log('User data refreshed:', refreshedUser);
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
+
+  const openLogin = () => {
+    setAuthMode('login');
+    setShowAuth(true);
+  };
+
+  const openRegister = () => {
+    setAuthMode('register');
+    setShowAuth(true);
+  };
+
+  const openInstitutionRegistration = () => {
+    setShowInstitutionRegistration(true);
+  };
+
+  return (
+    <div className="App">
+      <Toaster />
+      
+      {!user ? (
+        <>
+          <LandingPage 
+            onLogin={openLogin} 
+            onRegister={openRegister}
+            onRegisterInstitution={openInstitutionRegistration}
+          />
+          <AuthModal
+            isOpen={showAuth}
+            onClose={() => setShowAuth(false)}
+            mode={authMode}
+            onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+            onAuth={handleAuth}
+            refreshUser={refreshUser}
+          />
+          <InstitutionRegistrationModal
+            isOpen={showInstitutionRegistration}
+            onClose={() => setShowInstitutionRegistration(false)}
+          />
+        </>
+      ) : (
+        <Dashboard user={user} token={token} onLogout={handleLogout} refreshUser={refreshUser} />
+      )}
     </div>
   );
 };
