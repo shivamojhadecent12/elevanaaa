@@ -1,6 +1,6 @@
 import React from 'react';
-import useDarkMode from '../../hooks/use-dark-mode'; // Corrected import path
-import { FaSun, FaMoon } from 'react-icons/fa';
+import useDarkMode from '../../hooks/use-dark-mode';
+import { FaSun, FaMoon } from 'react-icons/fa'; // Correctly placed here
 import { Button } from './button';
 
 const ThemeToggle = () => {
