@@ -296,7 +296,7 @@ const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
   );
 };
 
-
+// Create Job Modal
 const CreateJobModal = ({ isOpen, onClose, token, onJobPosted }) => {
   const [formData, setFormData] = useState({
     title: '',
