@@ -1,3 +1,15 @@
-{
-  "env_image_name": "fastapi_react_mongo_shadcn_base_image_cloud_arm:release-01092025-1"
-}
+# .emergent/emergent.yml
+# This file is used to configure the emergent.sh platform.
+
+# Specify a build and deploy strategy.
+# You can customize this file with environment variables,
+# build commands, and other settings.
+
+# An example build command might look like this:
+build:
+  - npm install
+  - npm run build
+
+# An example start command for a Node.js app:
+start:
+  - npm start
