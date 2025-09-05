@@ -482,22 +482,23 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 @api_router.put("/users/profile")
 async def update_profile(profile_data: UserProfile, current_user: User = Depends(get_current_user)):
     update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
-    
-    # Ensure only Alumni can set themselves as mentors
-    if 'is_mentor' in update_data and current_user.role != 'Alumni':
-        raise HTTPException(status_code=403, detail="Only alumni can be mentors")
-    
-    # Update the user document in the database
-    await db.users.update_one(
-        {"email": current_user.email},
-        {"$set": update_data}
-    )
-    
-    # Fetch the newly updated user from the database
-    updated_user = await db.users.find_one({"email": current_user.email})
-    
-    # Return the complete, updated user object to the frontend
-    return User(**parse_from_mongo(updated_user))
+    
+    # Ensure only Alumni can set themselves as mentors
+    if 'is_mentor' in update_data and current_user.role != 'Alumni':
+        raise HTTPException(status_code=403, detail="Only alumni can be mentors")
+    
+    # Update the user document in the database
+    await db.users.update_one(
+        {"email": current_user.email},
+        {"$set": update_data}
+    )
+    
+    # Fetch the newly updated user from the database
+    updated_user = await db.users.find_one({"email": current_user.email})
+    
+    # Return the complete, updated user object to the frontend
+    return User(**parse_from_mongo(updated_user))
+
 # Posts routes (institution-scoped)
 @api_router.get("/posts/feed", response_model=List[Post])
 async def get_feed(current_user: User = Depends(get_current_user)):
