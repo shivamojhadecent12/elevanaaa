@@ -479,7 +479,7 @@ class AlumniConnectAPITester:
         return success
 
 def main():
-    print("🚀 Starting Alumni Connect v2.0 Comprehensive API Testing Suite")
+    print("🚀 Starting Elevanaa Comprehensive API Testing Suite")
     print("Testing Multi-Institution Architecture, Enhanced Security & AI Features")
     print("=" * 80)
     
@@ -557,7 +557,7 @@ def main():
     
     # Print comprehensive results
     print("\n" + "=" * 80)
-    print("📊 COMPREHENSIVE TEST RESULTS - Alumni Connect v2.0")
+    print("📊 COMPREHENSIVE TEST RESULTS - Elevanaa")
     print("=" * 80)
     print(f"Total Tests Run: {tester.tests_run}")
     print(f"Tests Passed: {tester.tests_passed}")
