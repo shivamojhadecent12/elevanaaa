@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -245,6 +245,21 @@ class MentorshipRequest(BaseModel):
     mentor_id: str
     mentor_name: str
     status: str = "Pending"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class JobApplication(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_id: str
+    applicant_id: str
+    applicant_name: str
+    resume_url: str
+    status: str = "Pending"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Chat(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    participants: List[str]
+    messages: List[Dict[str, Any]] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
 # Helper functions
@@ -610,6 +625,55 @@ async def create_job(job_data: JobCreate, current_user: User = Depends(get_curre
     
     return job
 
+@api_router.post("/jobs/{job_id}/apply")
+@limiter.limit("1/minute")
+async def apply_for_job(job_id: str, resume: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    """A user can apply for a job by uploading a resume."""
+
+    if current_user.status != "Verified":
+        raise HTTPException(status_code=403, detail="Account must be verified to apply for jobs.")
+
+    job = await db.jobs.find_one({"id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    
+    # In a real app, you would save the resume to a cloud storage service like AWS S3 or Google Cloud Storage.
+    # For this project, we'll simulate the upload and just store the filename.
+    resume_url = f"resume/{current_user.id}_{resume.filename}"
+
+    # Check for an existing application to prevent duplicates
+    existing_application = await db.job_applications.find_one({
+        "job_id": job_id,
+        "applicant_id": current_user.id
+    })
+    if existing_application:
+        raise HTTPException(status_code=400, detail="You have already applied for this job.")
+
+    application_data = JobApplication(
+        job_id=job_id,
+        applicant_id=current_user.id,
+        applicant_name=f"{current_user.first_name} {current_user.last_name}",
+        resume_url=resume_url
+    ).dict()
+    
+    await db.job_applications.insert_one(application_data)
+
+    return {"message": "Application submitted successfully!", "resume_url": resume_url}
+
+@api_router.get("/jobs/{job_id}/applications", response_model=List[JobApplication])
+async def get_job_applications(job_id: str, current_user: User = Depends(get_current_user)):
+    """Get all applications for a specific job posting."""
+    job = await db.jobs.find_one({"id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    if job['posted_by'] != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not authorized to view these applications.")
+    
+    applications = await db.job_applications.find({"job_id": job_id}).to_list(length=None)
+    return [JobApplication(**parse_from_mongo(app)) for app in applications]
+
+
 # AI Mentor Matching with enhanced reliability using Gemini
 @api_router.get("/ai/mentor-match")
 async def get_mentor_matches(current_user: User = Depends(get_current_user)):
@@ -750,6 +814,42 @@ async def request_mentorship(mentor_id: str, current_user: User = Depends(get_cu
     await db.mentorship_requests.insert_one(mentorship_request)
 
     return {"message": "Mentorship request sent successfully!", "request_id": request_id}
+
+@api_router.post("/mentorship/requests/{request_id}/accept")
+async def accept_mentorship_request(request_id: str, current_user: User = Depends(get_current_user)):
+    """A mentor can accept a mentorship request from a student."""
+    mentorship_request = await db.mentorship_requests.find_one({"id": request_id})
+
+    if not mentorship_request:
+        raise HTTPException(status_code=404, detail="Mentorship request not found.")
+    
+    if mentorship_request['mentor_id'] != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not authorized to accept this request.")
+
+    if mentorship_request['status'] != "Pending":
+        raise HTTPException(status_code=400, detail="Request is not in a pending state.")
+    
+    await db.mentorship_requests.update_one(
+        {"id": request_id},
+        {"$set": {"status": "Accepted"}}
+    )
+
+    # Automatically create a new chat conversation for the mentor and student
+    chat_id = str(uuid.uuid4())
+    chat = {
+        "id": chat_id,
+        "participants": [mentorship_request['student_id'], mentorship_request['mentor_id']],
+        "messages": [{
+            "sender_id": current_user.id,
+            "sender_name": f"{current_user.first_name} {current_user.last_name}",
+            "text": "Hello, I have accepted your mentorship request. Let's get started!",
+            "created_at": datetime.now(timezone.utc)
+        }],
+        "created_at": datetime.now(timezone.utc)
+    }
+    await db.chats.insert_one(chat)
+
+    return {"message": "Mentorship request accepted and chat started!", "chat_id": chat_id}
 
 
 # Institution Admin routes
