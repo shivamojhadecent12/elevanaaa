@@ -26,357 +26,358 @@ const API = `${BACKEND_URL}/api`;
 
 // 3D Globe Component
 const Globe = () => {
-  const meshRef = React.useRef();
-  
-  const { scale } = useSpring({
-    scale: [1, 1, 1],
-    config: { mass: 1, tension: 280, friction: 60 }
-  });
+  const meshRef = React.useRef();
+  
+  const { scale } = useSpring({
+    scale: [1, 1, 1],
+    config: { mass: 1, tension: 280, friction: 60 }
+  });
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (meshRef.current) {
-        meshRef.current.rotation.y += 0.01;
-      }
-    }, 16);
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (meshRef.current) {
+        meshRef.current.rotation.y += 0.01;
+      }
+    }, 16);
+    return () => clearInterval(interval);
+  }, []);
 
-  return (
-    <animated.mesh ref={meshRef} scale={scale}>
-      <Sphere args={[2.5, 64, 64]}>
-        <MeshDistortMaterial
-          color="#4338ca"
-          attach="material"
-          distort={0.3}
-          speed={2}
-          roughness={0.4}
-          metalness={0.8}
-        />
-      </Sphere>
-    </animated.mesh>
-  );
+  return (
+    <animated.mesh ref={meshRef} scale={scale}>
+      <Sphere args={[2.5, 64, 64]}>
+        <MeshDistortMaterial
+          color="#4338ca"
+          attach="material"
+          distort={0.3}
+          speed={2}
+          roughness={0.4}
+          metalness={0.8}
+        />
+      </Sphere>
+    </animated.mesh>
+  );
 };
 
 // Landing Page Component
 const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-      {/* 3D Background */}
-      <div className="absolute inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
-          <Suspense fallback={null}>
-            <ambientLight intensity={0.4} />
-            <pointLight position={[10, 10, 10]} intensity={1} />
-            <Globe />
-            <Stars
-              radius={100}
-              depth={50}
-              count={5000}
-              factor={4}
-              saturation={0}
-              fade
-            />
-            <OrbitControls enableZoom={false} enablePan={false} />
-          </Suspense>
-      </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 relative overflow-hidden">
+      {/* 3D Background */}
+      <div className="absolute inset-0 z-0">
+        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
+          <Suspense fallback={null}>
+            <ambientLight intensity={0.4} />
+            <pointLight position={[10, 10, 10]} intensity={1} />
+            <Globe />
+            <Stars
+              radius={100}
+              depth={50}
+              count={5000}
+              factor={4}
+              saturation={0}
+              fade
+            />
+            <OrbitControls enableZoom={false} enablePan={false} />
+          </Suspense>
+        </Canvas>
+      </div>
 
-      {/* Content Overlay */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
-        <div className="max-w-5xl mx-auto text-center text-white">
-          <div className="mb-8 backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20">
-            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Elevanaa
-            </h1>
-            <p className="text-xl mb-8 text-blue-100">
-              Multi-Institution Alumni Network. Connect globally, grow professionally. AI-powered mentorship matching.
-            </p>
-            
-            <div className="flex gap-4 justify-center flex-wrap">
-              <Button 
-                onClick={onLogin}
-                size="lg" 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full"
-              >
-                Sign In
-              </Button>
-              <Button 
-                onClick={onRegister}
-                variant="outline" 
-                size="lg"
-                className="border-white/30 text-white hover:bg-white/10 px-8 py-3 rounded-full"
-              >
-                Join Network
-              </Button>
-              <Button 
-                onClick={onRegisterInstitution}
-                variant="outline" 
-                size="lg"
-                className="border-green-400/50 text-green-400 hover:bg-green-400/10 px-8 py-3 rounded-full"
-              >
-                Register Institution
-              </Button>
-            </div>
-          </div>
+      {/* Content Overlay */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
+        <div className="max-w-5xl mx-auto text-center text-white">
+          <div className="mb-8 backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20">
+            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Alumni Connect
+            </h1>
+            <p className="text-xl mb-8 text-blue-100">
+              Multi-Institution Alumni Network. Connect globally, grow professionally. AI-powered mentorship matching.
+            </p>
+            
+            <div className="flex gap-4 justify-center flex-wrap">
+              <Button 
+                onClick={onLogin}
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full"
+              >
+                Sign In
+              </Button>
+              <Button 
+                onClick={onRegister}
+                variant="outline" 
+                size="lg"
+                className="border-white/30 text-white hover:bg-white/10 px-8 py-3 rounded-full"
+              >
+                Join Network
+              </Button>
+              <Button 
+                onClick={onRegisterInstitution}
+                variant="outline" 
+                size="lg"
+                className="border-green-400/50 text-green-400 hover:bg-green-400/10 px-8 py-3 rounded-full"
+              >
+                Register Institution
+              </Button>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">🏫</div>
-                <h3 className="text-lg font-semibold mb-2">Multi-Institution</h3>
-                <p className="text-sm text-blue-100">Connect across universities and institutions globally</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">🌐</div>
-                <h3 className="text-lg font-semibold mb-2">Global Network</h3>
-                <p className="text-sm text-blue-100">3D visualization of your worldwide alumni connections</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">🤖</div>
-                <h3 className="text-lg font-semibold mb-2">AI Matching</h3>
-                <p className="text-sm text-blue-100">Gemini 2.0 powered mentor recommendations</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
-              <CardContent className="p-6 text-center">
-                <div className="text-3xl mb-4">💼</div>
-                <h3 className="text-lg font-semibold mb-2">Career Growth</h3>
-                <p className="text-sm text-blue-100">Institution-specific job opportunities and networking</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">🏫</div>
+                <h3 className="text-lg font-semibold mb-2">Multi-Institution</h3>
+                <p className="text-sm text-blue-100">Connect across universities and institutions globally</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">🌐</div>
+                <h3 className="text-lg font-semibold mb-2">Global Network</h3>
+                <p className="text-sm text-blue-100">3D visualization of your worldwide alumni connections</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">🤖</div>
+                <h3 className="text-lg font-semibold mb-2">AI Matching</h3>
+                <p className="text-sm text-blue-100">Gemini 2.0 powered mentor recommendations</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+              <CardContent className="p-6 text-center">
+                <div className="text-3xl mb-4">💼</div>
+                <h3 className="text-lg font-semibold mb-2">Career Growth</h3>
+                <p className="text-sm text-blue-100">Institution-specific job opportunities and networking</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Institution Registration Modal
 const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    website: '',
-    admin_first_name: '',
-    admin_last_name: '',
-    admin_email: '',
-    admin_password: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    website: '',
+    admin_first_name: '',
+    admin_last_name: '',
+    admin_email: '',
+    admin_password: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-    try {
-      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
-      const response = await axios.post(`${API}/${endpoint}`, formData);
+    try {
+      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
+      const response = await axios.post(`${API}/${endpoint}`, formData);
 
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      onAuth(response.data.user, response.data.access_token);
+      onAuth(response.data.user, response.data.access_token);
 
-      if (mode === 'register') {
-        toast.success('Account created! Pending institution admin approval.');
-      } else {
-        toast.success('Welcome back!');
-      }
+      if (mode === 'register') {
+        toast.success('Account created! Pending institution admin approval.');
+      } else {
+        toast.success('Welcome back!');
+      }
 
-      onClose();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Authentication failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl">Register Your Institution</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Institution Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              required
-              placeholder="e.g., Stanford University"
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="website">Official Website</Label>
-            <Input
-              id="website"
-              value={formData.website}
-              onChange={(e) => setFormData({...formData, website: e.target.value})}
-              required
-              placeholder="e.g., https://stanford.edu"
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          
-          <div className="border-t border-slate-700 pt-4">
-            <h4 className="text-lg font-semibold mb-3 text-green-400">Institution Admin Details</h4>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="admin_first_name">First Name</Label>
-                <Input
-                  id="admin_first_name"
-                  value={formData.admin_first_name}
-                  onChange={(e) => setFormData({...formData, admin_first_name: e.target.value})}
-                  required
-                  className="bg-slate-800 border-slate-600"
-                />
-              </div>
-              <div>
-                <Label htmlFor="admin_last_name">Last Name</Label>
-                <Input
-                  id="admin_last_name"
-                  value={formData.admin_last_name}
-                  onChange={(e) => setFormData({...formData, admin_last_name: e.target.value})}
-                  required
-                  className="bg-slate-800 border-slate-600"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="admin_email">Admin Email</Label>
-              <Input
-                id="admin_email"
-                type="email"
-                value={formData.admin_email}
-                onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
-                required
-                className="bg-slate-800 border-slate-600"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="admin_password">Admin Password</Label>
-              <Input
-                id="admin_password"
-                type="password"
-                value={formData.admin_password}
-                onChange={(e) => setFormData({...formData, admin_password: e.target.value})}
-                required
-                className="bg-slate-800 border-slate-600"
-              />
-            </div>
-          </div>
-          
-          <Alert className="bg-blue-900/50 border-blue-700 text-blue-200">
-            <AlertDescription>
-              Your institution will be reviewed by our platform administrators. Once approved, you'll become the Institution Admin.
-            </AlertDescription>
-          </Alert>
-          
-          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit for Review'}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">Register Your Institution</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Institution Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              required
+              placeholder="e.g., Stanford University"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="website">Official Website</Label>
+            <Input
+              id="website"
+              value={formData.website}
+              onChange={(e) => setFormData({...formData, website: e.target.value})}
+              required
+              placeholder="e.g., https://stanford.edu"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          
+          <div className="border-t border-slate-700 pt-4">
+            <h4 className="text-lg font-semibold mb-3 text-green-400">Institution Admin Details</h4>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="admin_first_name">First Name</Label>
+                <Input
+                  id="admin_first_name"
+                  value={formData.admin_first_name}
+                  onChange={(e) => setFormData({...formData, admin_first_name: e.target.value})}
+                  required
+                  className="bg-slate-800 border-slate-600"
+                />
+              </div>
+              <div>
+                <Label htmlFor="admin_last_name">Last Name</Label>
+                <Input
+                  id="admin_last_name"
+                  value={formData.admin_last_name}
+                  onChange={(e) => setFormData({...formData, admin_last_name: e.target.value})}
+                  required
+                  className="bg-slate-800 border-slate-600"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="admin_email">Admin Email</Label>
+              <Input
+                id="admin_email"
+                type="email"
+                value={formData.admin_email}
+                onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
+                required
+                className="bg-slate-800 border-slate-600"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="admin_password">Admin Password</Label>
+              <Input
+                id="admin_password"
+                type="password"
+                value={formData.admin_password}
+                onChange={(e) => setFormData({...formData, admin_password: e.target.value})}
+                required
+                className="bg-slate-800 border-slate-600"
+              />
+            </div>
+          </div>
+          
+          <Alert className="bg-blue-900/50 border-blue-700 text-blue-200">
+            <AlertDescription>
+              Your institution will be reviewed by our platform administrators. Once approved, you'll become the Institution Admin.
+            </AlertDescription>
+          </Alert>
+          
+          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit for Review'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 // Create Job Modal
 const CreateJobModal = ({ isOpen, onClose, token, onJobPosted }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    company: '',
-    location: '',
-    description: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    company: '',
+    location: '',
+    description: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await axios.post(`${API}/jobs`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Job posted successfully!');
-      onJobPosted();
-      onClose();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to post job');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post(`${API}/jobs`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Job posted successfully!');
+      onJobPosted();
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to post job');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl">Post a New Job</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="title">Job Title</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          <div>
-            <Label htmlFor="company">Company</Label>
-            <Input
-              id="company"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              required
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="e.g., Remote, New York, NY"
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Job Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              className="bg-slate-800 border-slate-600"
-              rows={5}
-            />
-          </div>
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-            {loading ? 'Posting...' : 'Post Job'}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">Post a New Job</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="title">Job Title</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="company">Company</Label>
+            <Input
+              id="company"
+              value={formData.company}
+              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              placeholder="e.g., Remote, New York, NY"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="description">Job Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+              rows={5}
+            />
+          </div>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            {loading ? 'Posting...' : 'Post Job'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 // Job Apply Modal
 const JobApplyModal = ({ isOpen, onClose, token, jobId }) => {
@@ -778,9 +779,21 @@ const MentorRequestsView = ({ user, token, setCurrentView }) => {
       toast.success(response.data.message);
       fetchRequests(); // Refresh the list of requests
       // Automatically navigate to the new chat
-      setCurrentView('chat');
+      setCurrentView(`chat-${response.data.chat_id}`);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to accept request.');
+    }
+  };
+  
+  const handleRejectRequest = async (requestId) => {
+    try {
+      await axios.post(`${API}/mentorship/requests/${requestId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Mentorship request rejected.');
+      fetchRequests();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to reject request.');
     }
   };
 
@@ -808,12 +821,20 @@ const MentorRequestsView = ({ user, token, setCurrentView }) => {
                     <h4 className="text-white font-semibold">{req.student_name}</h4>
                     <p className="text-gray-400 text-sm">Requested mentorship</p>
                   </div>
-                  <Button 
-                    onClick={() => handleAcceptRequest(req.id)}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Accept
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => handleAcceptRequest(req.id)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Accept
+                    </Button>
+                     <Button 
+                      onClick={() => handleRejectRequest(req.id)}
+                      variant="destructive"
+                    >
+                      Reject
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1210,7 +1231,7 @@ const DirectoryView = ({ user, token }) => {
 };
 
 // Enhanced Mentor View with AI Status
-const MentorView = ({ user, token }) => {
+const MentorView = ({ user, token, setCurrentView }) => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [aiPowered, setAiPowered] = useState(false);
@@ -1242,6 +1263,10 @@ const MentorView = ({ user, token }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success(response.data.message);
+      // Optional: Give student an immediate link to the new chat
+      if (response.data.chat_id) {
+        setCurrentView(`chat-${response.data.chat_id}`);
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to send mentorship request');
     }
@@ -1327,8 +1352,8 @@ const JobsView = ({ user, token }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateJob, setShowCreateJob] = useState(false);
-  const [showApplyJob, setShowApplyJob] = useState(false); // NEW: State for job application modal
-  const [selectedJobId, setSelectedJobId] = useState(null); // NEW: State to store the selected job's ID
+  const [showApplyJob, setShowApplyJob] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -1408,7 +1433,7 @@ const JobsView = ({ user, token }) => {
                   </div>
                   <Button 
                     className="bg-blue-600 hover:bg-blue-700 ml-4"
-                    onClick={() => handleApplyClick(job.id)} // UPDATED
+                    onClick={() => handleApplyClick(job.id)}
                   >
                     Apply Now
                   </Button>
@@ -1424,7 +1449,7 @@ const JobsView = ({ user, token }) => {
         token={token}
         onJobPosted={fetchJobs}
       />
-      <JobApplyModal // NEW: Render the Job Application Modal
+      <JobApplyModal
         isOpen={showApplyJob}
         onClose={() => setShowApplyJob(false)}
         token={token}
@@ -1443,15 +1468,13 @@ const ProfileView = ({ user, token, refreshUser }) => {
   });
 
   useEffect(() => {
-    // This hook runs whenever the 'user' prop changes.
-    // It updates the local 'profile' state to match the new 'user' data.
     setProfile({
       industry: user.industry || '',
       location: user.location || '',
       is_mentor: user.is_mentor || false,
       profile_picture_url: user.profile_picture_url || ''
     });
-  }, [user]); // The dependency array ensures this hook runs when the 'user' object changes.
+  }, [user]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
