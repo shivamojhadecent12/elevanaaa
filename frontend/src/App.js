@@ -531,7 +531,7 @@ const Dashboard = ({ user, token, onLogout, refreshUser }) => {
           {currentView === 'directory' && <DirectoryView user={user} token={token} />}
           {currentView === 'mentors' && <MentorView user={user} token={token} />}
           {currentView === 'jobs' && <JobsView user={user} token={token} />}
-          {currentView === 'profile' && <ProfileView user={user} token={token} />}
+          {currentView === 'profile' && <ProfileView user={user} token={token} refreshUser={refreshUser} />}
           {currentView === 'admin' && (user.role === 'Institution_Admin' || user.role === 'Platform_Admin') && <AdminView user={user} token={token} />}
         </div>
       </main>
@@ -1075,105 +1075,108 @@ const JobsView = ({ user, token }) => {
 };
 
 // Enhanced Profile View
-const ProfileView = ({ user, token }) => {
-  const [profile, setProfile] = useState({
-    industry: user.industry || '',
-    location: user.location || '',
-    is_mentor: user.is_mentor || false,
-    profile_picture_url: user.profile_picture_url || ''
-  });
+// Enhanced Profile View
+const ProfileView = ({ user, token, refreshUser }) => {
+  const [profile, setProfile] = useState({
+    industry: user.industry || '',
+    location: user.location || '',
+    is_mentor: user.is_mentor || false,
+    profile_picture_url: user.profile_picture_url || ''
+  });
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.put(`${API}/users/profile`, profile, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Profile updated successfully!');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to update profile');
-    }
-  };
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`${API}/users/profile`, profile, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // ⭐ STEP 1: Call refreshUser after successful update
+      refreshUser();
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update profile');
+    }
+  };
 
-  return (
-    <div className="max-w-2xl mx-auto">
-      <Card className="bg-slate-800 border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white">Profile Settings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpdateProfile} className="space-y-6">
-            <div className="text-center mb-6">
-              <Avatar className="w-24 h-24 mx-auto mb-4">
-                <AvatarFallback className="bg-blue-600 text-white text-2xl">
-                  {user.first_name[0]}{user.last_name[0]}
-                </AvatarFallback>
-              </Avatar>
-              <h2 className="text-white text-xl font-semibold">
-                {user.first_name} {user.last_name}
-              </h2>
-              <div className="flex justify-center space-x-2 mt-2">
-                <Badge className="bg-blue-600 text-white">{user.role.replace('_', ' ')}</Badge>
-                <Badge className={user.status === 'Verified' ? 'bg-green-600' : 'bg-yellow-600'}>
-                  {user.status}
-                </Badge>
-              </div>
-            </div>
+  return (
+    <div className="max-w-2xl mx-auto">
+      <Card className="bg-slate-800 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">Profile Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleUpdateProfile} className="space-y-6">
+            <div className="text-center mb-6">
+              <Avatar className="w-24 h-24 mx-auto mb-4">
+                <AvatarFallback className="bg-blue-600 text-white text-2xl">
+                  {user.first_name[0]}{user.last_name[0]}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="text-white text-xl font-semibold">
+                {user.first_name} {user.last_name}
+              </h2>
+              <div className="flex justify-center space-x-2 mt-2">
+                <Badge className="bg-blue-600 text-white">{user.role.replace('_', ' ')}</Badge>
+                <Badge className={user.status === 'Verified' ? 'bg-green-600' : 'bg-yellow-600'}>
+                  {user.status}
+                </Badge>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-white">Email</Label>
-                <Input value={user.email} disabled className="bg-slate-700 border-slate-600 text-gray-400" />
-              </div>
-              <div>
-                <Label className="text-white">Major</Label>
-                <Input value={user.major || 'Not specified'} disabled className="bg-slate-700 border-slate-600 text-gray-400" />
-              </div>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white">Email</Label>
+                <Input value={user.email} disabled className="bg-slate-700 border-slate-600 text-gray-400" />
+              </div>
+              <div>
+                <Label className="text-white">Major</Label>
+                <Input value={user.major || 'Not specified'} disabled className="bg-slate-700 border-slate-600 text-gray-400" />
+              </div>
+            </div>
 
-            <div>
-              <Label className="text-white">Industry</Label>
-              <Input
-                value={profile.industry}
-                onChange={(e) => setProfile({...profile, industry: e.target.value})}
-                placeholder="e.g., Technology, Finance, Healthcare"
-                className="bg-slate-700 border-slate-600 text-white"
-              />
-            </div>
+            <div>
+              <Label className="text-white">Industry</Label>
+              <Input
+                value={profile.industry}
+                onChange={(e) => setProfile({...profile, industry: e.target.value})}
+                placeholder="e.g., Technology, Finance, Healthcare"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
 
-            <div>
-              <Label className="text-white">Location</Label>
-              <Input
-                value={profile.location}
-                onChange={(e) => setProfile({...profile, location: e.target.value})}
-                placeholder="e.g., San Francisco, CA"
-                className="bg-slate-700 border-slate-600 text-white"
-              />
-            </div>
+            <div>
+              <Label className="text-white">Location</Label>
+              <Input
+                value={profile.location}
+                onChange={(e) => setProfile({...profile, location: e.target.value})}
+                placeholder="e.g., San Francisco, CA"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
 
-            {user.role === 'Alumni' && (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is_mentor"
-                  checked={profile.is_mentor}
-                  onChange={(e) => setProfile({...profile, is_mentor: e.target.checked})}
-                  className="w-4 h-4"
-                />
-                <Label htmlFor="is_mentor" className="text-white">
-                  Available as a mentor to students
-                </Label>
-              </div>
-            )}
+            {user.role === 'Alumni' && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_mentor"
+                  checked={profile.is_mentor}
+                  onChange={(e) => setProfile({...profile, is_mentor: e.target.checked})}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="is_mentor" className="text-white">
+                  Available as a mentor to students
+                </Label>
+              </div>
+            )}
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              Update Profile
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+              Update Profile
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 // Enhanced Admin View with Platform/Institution Separation
