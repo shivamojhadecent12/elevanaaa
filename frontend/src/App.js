@@ -296,6 +296,89 @@ const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
   );
 };
 
+
+const CreateJobModal = ({ isOpen, onClose, token, onJobPosted }) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    company: '',
+    location: '',
+    description: ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post(`${API}/jobs`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Job posted successfully!');
+      onJobPosted();
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to post job');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">Post a New Job</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="title">Job Title</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="company">Company</Label>
+            <Input
+              id="company"
+              value={formData.company}
+              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              placeholder="e.g., Remote, New York, NY"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="description">Job Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+              rows={5}
+            />
+          </div>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            {loading ? 'Posting...' : 'Post Job'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 // Auth Components
 const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser }) => {
   const [formData, setFormData] = useState({
@@ -888,6 +971,7 @@ const DirectoryView = ({ user, token }) => {
 };
 
 // Enhanced Mentor View with AI Status
+// Enhanced Mentor View with AI Status
 const MentorView = ({ user, token }) => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -912,6 +996,19 @@ const MentorView = ({ user, token }) => {
     }
   };
 
+  const handleRequestMentorship = async (mentorId) => {
+    try {
+      const response = await axios.post(
+        `${API}/mentorship/request/${mentorId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(response.data.message);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send mentorship request');
+    }
+  };
+
   if (error) {
     return <ErrorState title="Mentor Matching Error" description={error} onRetry={findMentors} />;
   }
@@ -927,7 +1024,7 @@ const MentorView = ({ user, token }) => {
             Get personalized mentor recommendations using Gemini 2.0 AI, analyzing your profile, major, and career goals for optimal matches.
           </p>
           <Button 
-            onClick={findMentors} 
+            onClick={findMentors}
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700"
           >
@@ -966,7 +1063,10 @@ const MentorView = ({ user, token }) => {
                     <p className="text-gray-400 text-sm">📍 {mentor.location}</p>
                   )}
                 </div>
-                <Button className="mt-4 bg-green-600 hover:bg-green-700">
+                <Button 
+                    className="mt-4 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleRequestMentorship(mentor.id)} 
+                >
                   Request Mentorship
                 </Button>
               </CardContent>
@@ -984,6 +1084,7 @@ const MentorView = ({ user, token }) => {
   );
 };
 
+// Enhanced Jobs View
 // Enhanced Jobs View
 const JobsView = ({ user, token }) => {
   const [jobs, setJobs] = useState([]);
@@ -1070,6 +1171,12 @@ const JobsView = ({ user, token }) => {
           ))}
         </div>
       )}
+      <CreateJobModal
+        isOpen={showCreateJob}
+        onClose={() => setShowCreateJob(false)}
+        token={token}
+        onJobPosted={fetchJobs}
+      />
     </div>
   );
 };
