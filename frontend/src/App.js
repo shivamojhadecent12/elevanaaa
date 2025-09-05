@@ -79,7 +79,7 @@ const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
             />
             <OrbitControls enableZoom={false} enablePan={false} />
           </Suspense>
-        </Canvas> {/* <--- The closing tag is here */}
+        </Canvas>
       </div>
 
       {/* Content Overlay */}
@@ -160,222 +160,223 @@ const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
 };
 // Institution Registration Modal
 const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    website: '',
-    admin_first_name: '',
-    admin_last_name: '',
-    admin_email: '',
-    admin_password: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    website: '',
+    admin_first_name: '',
+    admin_last_name: '',
+    admin_email: '',
+    admin_password: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-    try {
-      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
-      const response = await axios.post(`${API}/${endpoint}`, formData);
+    try {
+      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
+      const response = await axios.post(`${API}/${endpoint}`, formData);
 
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      onAuth(response.data.user, response.data.access_token);
+      onAuth(response.data.user, response.data.access_token);
 
-      if (mode === 'register') {
-        toast.success('Account created! Pending institution admin approval.');
-      } else {
-        toast.success('Welcome back!');
-      }
+      if (mode === 'register') {
+        toast.success('Account created! Pending institution admin approval.');
+      } else {
+        toast.success('Welcome back!');
+      }
 
-      onClose();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Authentication failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl">Register Your Institution</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Institution Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              required
-              placeholder="e.g., Stanford University"
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="website">Official Website</Label>
-            <Input
-              id="website"
-              value={formData.website}
-              onChange={(e) => setFormData({...formData, website: e.target.value})}
-              required
-              placeholder="e.g., https://stanford.edu"
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          
-          <div className="border-t border-slate-700 pt-4">
-            <h4 className="text-lg font-semibold mb-3 text-green-400">Institution Admin Details</h4>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="admin_first_name">First Name</Label>
-                <Input
-                  id="admin_first_name"
-                  value={formData.admin_first_name}
-                  onChange={(e) => setFormData({...formData, admin_first_name: e.target.value})}
-                  required
-                  className="bg-slate-800 border-slate-600"
-                />
-              </div>
-              <div>
-                <Label htmlFor="admin_last_name">Last Name</Label>
-                <Input
-                  id="admin_last_name"
-                  value={formData.admin_last_name}
-                  onChange={(e) => setFormData({...formData, admin_last_name: e.target.value})}
-                  required
-                  className="bg-slate-800 border-slate-600"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="admin_email">Admin Email</Label>
-              <Input
-                id="admin_email"
-                type="email"
-                value={formData.admin_email}
-                onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
-                required
-                className="bg-slate-800 border-slate-600"
-              />
-          </div>
-          
-            <div>
-              <Label htmlFor="admin_password">Admin Password</Label>
-              <Input
-                id="admin_password"
-                type="password"
-                value={formData.admin_password}
-                onChange={(e) => setFormData({...formData, admin_password: e.target.value})}
-                required
-                className="bg-slate-800 border-slate-600"
-              />
-          </div>
-          </div>
-          
-          <Alert className="bg-blue-900/50 border-blue-700 text-blue-200">
-            <AlertDescription>
-              Your institution will be reviewed by our platform administrators. Once approved, you'll become the Institution Admin.
-            </AlertDescription>
-          </Alert>
-          
-          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit for Review'}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">Register Your Institution</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Institution Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              required
+              placeholder="e.g., Stanford University"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="website">Official Website</Label>
+            <Input
+              id="website"
+              value={formData.website}
+              onChange={(e) => setFormData({...formData, website: e.target.value})}
+              required
+              placeholder="e.g., https://stanford.edu"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          
+          <div className="border-t border-slate-700 pt-4">
+            <h4 className="text-lg font-semibold mb-3 text-green-400">Institution Admin Details</h4>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="admin_first_name">First Name</Label>
+                <Input
+                  id="admin_first_name"
+                  value={formData.admin_first_name}
+                  onChange={(e) => setFormData({...formData, admin_first_name: e.target.value})}
+                  required
+                  className="bg-slate-800 border-slate-600"
+                />
+              </div>
+              <div>
+                <Label htmlFor="admin_last_name">Last Name</Label>
+                <Input
+                  id="admin_last_name"
+                  value={formData.admin_last_name}
+                  onChange={(e) => setFormData({...formData, admin_last_name: e.target.value})}
+                  required
+                  className="bg-slate-800 border-slate-600"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="admin_email">Admin Email</Label>
+              <Input
+                id="admin_email"
+                type="email"
+                value={formData.admin_email}
+                onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
+                required
+                className="bg-slate-800 border-slate-600"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="admin_password">Admin Password</Label>
+              <Input
+                id="admin_password"
+                type="password"
+                value={formData.admin_password}
+                onChange={(e) => setFormData({...formData, admin_password: e.target.value})}
+                required
+                className="bg-slate-800 border-slate-600"
+              />
+            </div>
+          </div>
+          
+          <Alert className="bg-blue-900/50 border-blue-700 text-blue-200">
+            <AlertDescription>
+              Your institution will be reviewed by our platform administrators. Once approved, you'll become the Institution Admin.
+            </AlertDescription>
+          </Alert>
+          
+          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit for Review'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 // Create Job Modal
 const CreateJobModal = ({ isOpen, onClose, token, onJobPosted }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    company: '',
-    location: '',
-    description: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    company: '',
+    location: '',
+    description: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await axios.post(`${API}/jobs`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Job posted successfully!');
-      onJobPosted();
-      onClose();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to post job');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post(`${API}/jobs`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Job posted successfully!');
+      onJobPosted();
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to post job');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl">Post a New Job</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="title">Job Title</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          <div>
-            <Label htmlFor="company">Company</Label>
-            <Input
-              id="company"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              required
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="e.g., Remote, New York, NY"
-              className="bg-slate-800 border-slate-600"
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Job Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              className="bg-slate-800 border-slate-600"
-              rows={5}
-          </div>
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-            {loading ? 'Posting...' : 'Post Job'}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">Post a New Job</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="title">Job Title</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="company">Company</Label>
+            <Input
+              id="company"
+              value={formData.company}
+              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              placeholder="e.g., Remote, New York, NY"
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <div>
+            <Label htmlFor="description">Job Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+              className="bg-slate-800 border-slate-600"
+              rows={5}
+            />
+          </div>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            {loading ? 'Posting...' : 'Post Job'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 };
 // Job Apply Modal
 const JobApplyModal = ({ isOpen, onClose, token, jobId }) => {
@@ -1179,7 +1180,7 @@ const DirectoryView = ({ user, token }) => {
 
       {loading ? (
         <div className="text-white text-center py-12">Loading directory...</div>
-      ) : users && users.length === 0 ? (
+      ) : users.length === 0 ? (
         <EmptyState
           icon="👥"
           title="No Users Found"
