@@ -158,6 +158,7 @@ const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
     </div>
   );
 };
+
 // Institution Registration Modal
 const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -845,10 +846,28 @@ const MentorRequestsView = ({ user, token, setCurrentView }) => {
 // Dashboard Components
 const Dashboard = ({ user, token, onLogout, refreshUser }) => {
   const [currentView, setCurrentView] = useState('feed');
+  const [chats, setChats] = useState([]);
+
+  useEffect(() => {
+    if (user && user.status === 'Verified') {
+      fetchChats();
+    }
+  }, [user, token]);
+
+  const fetchChats = async () => {
+    try {
+      const response = await axios.get(`${API}/chats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setChats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch chats:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900">
-      <Header user={user} onLogout={onLogout} currentView={currentView} setCurrentView={setCurrentView} />
+      <Header user={user} onLogout={onLogout} currentView={currentView} setCurrentView={setCurrentView} chatsCount={chats.length} />
       
       <main className="pt-20 px-6">
         <div className="max-w-7xl mx-auto">
@@ -868,13 +887,14 @@ const Dashboard = ({ user, token, onLogout, refreshUser }) => {
           {currentView === 'admin' && (user.role === 'Institution_Admin' || user.role === 'Platform_Admin') && <AdminView user={user} token={token} />}
           {currentView === 'mentor-requests' && user.role === 'Alumni' && user.is_mentor && <MentorRequestsView user={user} token={token} setCurrentView={setCurrentView} />}
           {currentView.startsWith('chat-') && <ChatView user={user} token={token} chatId={currentView.substring(5)} />}
+          {currentView === 'chat-list' && <ChatListView user={user} token={token} setCurrentView={setCurrentView} chats={chats} />}
         </div>
       </main>
     </div>
   );
 };
 
-const Header = ({ user, onLogout, currentView, setCurrentView }) => {
+const Header = ({ user, onLogout, currentView, setCurrentView, chatsCount }) => {
   const getRoleBadgeColor = (role) => {
     switch(role) {
       case 'Platform_Admin': return 'bg-red-600';
@@ -915,6 +935,11 @@ const Header = ({ user, onLogout, currentView, setCurrentView }) => {
               {(user.role === 'Institution_Admin' || user.role === 'Platform_Admin') && (
                 <NavButton active={currentView === 'admin'} onClick={() => setCurrentView('admin')}>
                   Admin
+                </NavButton>
+              )}
+               {chatsCount > 0 && (
+                <NavButton active={currentView === 'chat-list'} onClick={() => setCurrentView('chat-list')}>
+                  Chats ({chatsCount})
                 </NavButton>
               )}
             </nav>
