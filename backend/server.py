@@ -262,6 +262,12 @@ class Chat(BaseModel):
     messages: List[Dict[str, Any]] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
+class Message(BaseModel):
+    sender_id: str
+    sender_name: str
+    text: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
 # Helper functions
 def create_access_token(data: dict):
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
@@ -815,8 +821,21 @@ async def request_mentorship(request: Request, mentor_id: str, current_user: Use
 
     return {"message": "Mentorship request sent successfully!", "request_id": request_id}
 
+@api_router.get("/mentorship/requests/pending")
+async def get_pending_mentorship_requests(current_user: User = Depends(get_current_user)):
+    """Mentor can view pending mentorship requests."""
+    if current_user.role != 'Alumni' or not current_user.is_mentor:
+        raise HTTPException(status_code=403, detail="You are not authorized to view this page.")
+
+    requests = await db.mentorship_requests.find({
+        "mentor_id": current_user.id,
+        "status": "Pending"
+    }).to_list(length=None)
+
+    return [MentorshipRequest(**parse_from_mongo(req)) for req in requests]
+
 @api_router.post("/mentorship/requests/{request_id}/accept")
-async def accept_mentorship_request(request: Request, request_id: str, current_user: User = Depends(get_current_user)):
+async def accept_mentorship_request(request_id: str, current_user: User = Depends(get_current_user)):
     """A mentor can accept a mentorship request from a student."""
     mentorship_request = await db.mentorship_requests.find_one({"id": request_id})
 
