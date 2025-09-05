@@ -665,12 +665,13 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
             response = await model.generate_content_async(prompt)
             
             raw_text = response.text.strip()
-            if raw_text.startswith('```json'):
-                raw_text = raw_text[7:].strip()
-            if raw_text.endswith('```'):
-                raw_text = raw_text[:-3].strip()
-
-            mentor_ids = json.loads(raw_text)
+            # Clean the response to ensure it is valid JSON
+            clean_text = raw_text.split("```json")[-1].split("```")[0].strip()
+            
+            if not clean_text:
+                clean_text = raw_text.split("]")[0] + "]"
+            
+            mentor_ids = json.loads(clean_text)
             
             if isinstance(mentor_ids, list):
                 matched_mentors = []
