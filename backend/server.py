@@ -627,7 +627,7 @@ async def create_job(job_data: JobCreate, current_user: User = Depends(get_curre
 
 @api_router.post("/jobs/{job_id}/apply")
 @limiter.limit("1/minute")
-async def apply_for_job(job_id: str, resume: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+async def apply_for_job(request: Request, job_id: str, resume: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     """A user can apply for a job by uploading a resume."""
 
     if current_user.status != "Verified":
@@ -781,7 +781,7 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Mentor matching temporarily unavailable")
 
 @api_router.post("/mentorship/request/{mentor_id}")
-async def request_mentorship(mentor_id: str, current_user: User = Depends(get_current_user)):
+async def request_mentorship(request: Request, mentor_id: str, current_user: User = Depends(get_current_user)):
     """A student can request mentorship from a verified alumni mentor."""
     if current_user.role != "Student" or current_user.status != "Verified":
         raise HTTPException(status_code=403, detail="Only verified students can request mentorship.")
@@ -816,7 +816,7 @@ async def request_mentorship(mentor_id: str, current_user: User = Depends(get_cu
     return {"message": "Mentorship request sent successfully!", "request_id": request_id}
 
 @api_router.post("/mentorship/requests/{request_id}/accept")
-async def accept_mentorship_request(request_id: str, current_user: User = Depends(get_current_user)):
+async def accept_mentorship_request(request: Request, request_id: str, current_user: User = Depends(get_current_user)):
     """A mentor can accept a mentorship request from a student."""
     mentorship_request = await db.mentorship_requests.find_one({"id": request_id})
 
