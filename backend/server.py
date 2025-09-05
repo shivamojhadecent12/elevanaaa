@@ -481,7 +481,7 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 
 @api_router.put("/users/profile")
 async def update_profile(profile_data: UserProfile, current_user: User = Depends(get_current_user)):
-    update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
+    update_data = {k: v for k, v in progile_data.dict().items() if v is not None}
     
     # Ensure only Alumni can set themselves as mentors
     if 'is_mentor' in update_data and current_user.role != 'Alumni':
