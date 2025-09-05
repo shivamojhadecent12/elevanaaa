@@ -174,21 +174,25 @@ const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      const response = await axios.post(`${API}/institutions/register`, formData);
-      toast.success('Institution registration submitted for review!');
+      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
+      const response = await axios.post(`${API}/${endpoint}`, formData);
+
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      onAuth(response.data.user, response.data.access_token);
+
+      if (mode === 'register') {
+        toast.success('Account created! Pending institution admin approval.');
+      } else {
+        toast.success('Welcome back!');
+      }
+
       onClose();
-      setFormData({
-        name: '',
-        website: '',
-        admin_first_name: '',
-        admin_last_name: '',
-        admin_email: '',
-        admin_password: ''
-      });
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registration failed');
+      toast.error(error.response?.data?.detail || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -293,7 +297,7 @@ const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
 };
 
 // Auth Components
-const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth }) => {
+const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -338,6 +342,7 @@ const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth }) => {
       if (mode === 'register') {
         toast.success('Account created! Pending institution admin approval.');
       } else {
+        refreshUser();
         toast.success('Welcome back!');
       }
       
@@ -505,7 +510,7 @@ const ErrorState = ({ title, description, onRetry }) => (
 );
 
 // Dashboard Components
-const Dashboard = ({ user, token, onLogout }) => {
+const Dashboard = ({ user, token, onLogout, refreshUser }) => {
   const [currentView, setCurrentView] = useState('feed');
 
   return (
@@ -1455,6 +1460,21 @@ const App = () => {
     setUser(null);
     setToken(null);
   };
+  
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get(`${API}/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const refreshedUser = response.data;
+      setUser(refreshedUser);
+      localStorage.setItem('user', JSON.stringify(refreshedUser));
+      console.log('User data refreshed:', refreshedUser);
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
 
   const openLogin = () => {
     setAuthMode('login');
@@ -1487,6 +1507,7 @@ const App = () => {
             mode={authMode}
             onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
             onAuth={handleAuth}
+            refreshUser={refreshUser}
           />
           <InstitutionRegistrationModal
             isOpen={showInstitutionRegistration}
