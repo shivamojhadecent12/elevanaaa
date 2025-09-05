@@ -971,7 +971,6 @@ const DirectoryView = ({ user, token }) => {
 };
 
 // Enhanced Mentor View with AI Status
-// Enhanced Mentor View with AI Status
 const MentorView = ({ user, token }) => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -1085,7 +1084,6 @@ const MentorView = ({ user, token }) => {
 };
 
 // Enhanced Jobs View
-// Enhanced Jobs View
 const JobsView = ({ user, token }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1181,8 +1179,6 @@ const JobsView = ({ user, token }) => {
   );
 };
 
-// Enhanced Profile View
-// Enhanced Profile View
 // Enhanced Profile View
 const ProfileView = ({ user, token, refreshUser }) => {
   const [profile, setProfile] = useState({
@@ -1327,11 +1323,9 @@ const AdminView = ({ user, token }) => {
           <TabsTrigger value="users" className="text-white">User Management</TabsTrigger>
         </TabsList>
 
-        {user.role === 'Platform_Admin' && (
-          <TabsContent value="institutions">
-            <PlatformAdminInstitutions token={token} />
-          </TabsContent>
-        )}
+        <TabsContent value="institutions">
+          <PlatformAdminInstitutions token={token} />
+        </TabsContent>
 
         <TabsContent value="users">
           <UserManagement user={user} token={token} />
@@ -1636,7 +1630,7 @@ const App = () => {
           />
         </>
       ) : (
-        <Dashboard user={user} token={token} onLogout={handleLogout} />
+        <Dashboard user={user} token={token} onLogout={handleLogout} refreshUser={refreshUser} />
       )}
     </div>
   );
