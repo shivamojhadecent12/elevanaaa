@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
     client.close()
 
 # Create the main app with the lifespan context manager
-app = FastAPI(title="Alumni Connect API", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Elevanaa API", version="2.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -305,7 +305,7 @@ def parse_from_mongo(item):
 # Root route
 @api_router.get("/")
 async def root():
-    return {"message": "Alumni Connect API v2.0", "status": "running", "features": ["multi-institution", "ai-powered"]}
+    return {"message": "Elevanaa API", "status": "running", "features": ["multi-institution", "ai-powered"]}
 
 # Institution Management Routes
 @api_router.post("/institutions/register")
