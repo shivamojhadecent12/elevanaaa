@@ -238,6 +238,15 @@ class JobCreate(BaseModel):
             return sanitize_input(v)
         return v
 
+class MentorshipRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    student_name: str
+    mentor_id: str
+    mentor_name: str
+    status: str = "Pending"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
 # Helper functions
 def create_access_token(data: dict):
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
@@ -481,6 +490,7 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 
 @api_router.put("/users/profile")
 async def update_profile(profile_data: UserProfile, current_user: User = Depends(get_current_user)):
+    """Update user profile"""
     update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
     
     # Ensure only Alumni can set themselves as mentors
@@ -576,7 +586,7 @@ async def get_jobs(current_user: User = Depends(get_current_user)):
     if current_user.role != "Platform_Admin":
         query["institution_id"] = current_user.institution_id
         
-    jobs = await db.jobs.find(query).sort("created_at", -1).to_list(length=50)
+    jobs = await db.jobs.find(query).to_list(length=50)
     return [Job(**parse_from_mongo(job)) for job in jobs]
 
 @api_router.post("/jobs", response_model=Job)
@@ -704,6 +714,42 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
     except Exception as e:
         logging.error(f"Mentor matching error: {e}")
         raise HTTPException(status_code=500, detail="Mentor matching temporarily unavailable")
+
+@api_router.post("/mentorship/request/{mentor_id}")
+async def request_mentorship(mentor_id: str, current_user: User = Depends(get_current_user)):
+    """A student can request mentorship from a verified alumni mentor."""
+    if current_user.role != "Student" or current_user.status != "Verified":
+        raise HTTPException(status_code=403, detail="Only verified students can request mentorship.")
+
+    mentor = await db.users.find_one({"id": mentor_id, "is_mentor": True, "status": "Verified"})
+    if not mentor:
+        raise HTTPException(status_code=404, detail="Mentor not found or is not available.")
+
+    if current_user.id == mentor_id:
+        raise HTTPException(status_code=400, detail="Cannot request mentorship from yourself.")
+
+    existing_request = await db.mentorship_requests.find_one({
+        "student_id": current_user.id,
+        "mentor_id": mentor_id,
+        "status": {"$in": ["Pending", "Accepted"]}
+    })
+    if existing_request:
+        raise HTTPException(status_code=400, detail="Mentorship request already exists.")
+
+    request_id = str(uuid.uuid4())
+    mentorship_request = {
+        "id": request_id,
+        "student_id": current_user.id,
+        "student_name": f"{current_user.first_name} {current_user.last_name}",
+        "mentor_id": mentor_id,
+        "mentor_name": f"{mentor['first_name']} {mentor['last_name']}",
+        "status": "Pending",
+        "created_at": datetime.now(timezone.utc)
+    }
+    await db.mentorship_requests.insert_one(mentorship_request)
+
+    return {"message": "Mentorship request sent successfully!", "request_id": request_id}
+
 
 # Institution Admin routes
 @api_router.get("/admin/users/pending")
