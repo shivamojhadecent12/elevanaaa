@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sphere, MeshDistortMaterial, Stars, Text } from '@react-three/drei';
 import { useSpring, animated } from '@react-spring/three';
 import axios from 'axios';
-import { FaSun, FaMoon } from 'react-icons/fa';
+// Removed: import { FaSun, FaMoon } from 'react-icons/fa';
 import './App.css';
 
 // Components
