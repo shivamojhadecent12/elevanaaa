@@ -87,7 +87,7 @@ const LandingPage = ({ onLogin, onRegister, onRegisterInstitution }) => {
         <div className="max-w-5xl mx-auto text-center text-white">
           <div className="mb-8 backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20">
             <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Elevanaa
+              Alumni Connect
             </h1>
             <p className="text-xl mb-8 text-blue-100">
               Multi-Institution Alumni Network. Connect globally, grow professionally. AI-powered mentorship matching.
@@ -379,6 +379,68 @@ const CreateJobModal = ({ isOpen, onClose, token, onJobPosted }) => {
     </Dialog>
   );
 };
+// Job Apply Modal
+const JobApplyModal = ({ isOpen, onClose, token, jobId }) => {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error('Please upload a resume file.');
+      return;
+    }
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    try {
+      await axios.post(`${API}/jobs/${jobId}/apply`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+      toast.success('Application submitted successfully!');
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to submit application.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">Apply for Job</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="resume">Upload Resume (PDF/DOCX)</Label>
+            <Input
+              id="resume"
+              type="file"
+              accept=".pdf,.docx"
+              onChange={handleFileChange}
+              required
+              className="bg-slate-800 border-slate-600"
+            />
+          </div>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit Application'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 // Auth Components
 const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser }) => {
   const [formData, setFormData] = useState({
@@ -442,7 +504,7 @@ const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser })
       <DialogContent className="sm:max-w-md bg-slate-900 text-white border-slate-700">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl">
-            {mode === 'login' ? 'Welcome Back' : 'Join Elevanaa'}
+            {mode === 'login' ? 'Welcome Back' : 'Join Alumni Connect'}
           </DialogTitle>
         </DialogHeader>
         
@@ -638,7 +700,7 @@ const Header = ({ user, onLogout, currentView, setCurrentView }) => {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-bold text-white">Elevanaa</h1>
+            <h1 className="text-2xl font-bold text-white">Alumni Connect v2.0</h1>
             
             <nav className="hidden md:flex space-x-6">
               <NavButton active={currentView === 'feed'} onClick={() => setCurrentView('feed')}>
@@ -855,6 +917,7 @@ const DirectoryView = ({ user, token }) => {
   }, [filters]);
 
   const fetchUsers = async () => {
+    setLoading(true); // Set loading to true before fetching
     try {
       setError(null);
       const params = new URLSearchParams();
@@ -869,7 +932,7 @@ const DirectoryView = ({ user, token }) => {
     } catch (error) {
       setError('Failed to load users');
     } finally {
-      setLoading(false);
+      setLoading(false); // Set loading to false after fetching is complete
     }
   };
 
@@ -1088,6 +1151,8 @@ const JobsView = ({ user, token }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateJob, setShowCreateJob] = useState(false);
+  const [showApplyJob, setShowApplyJob] = useState(false); // NEW: State for job application modal
+  const [selectedJobId, setSelectedJobId] = useState(null); // NEW: State to store the selected job's ID
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -1106,6 +1171,11 @@ const JobsView = ({ user, token }) => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleApplyClick = (jobId) => {
+    setSelectedJobId(jobId);
+    setShowApplyJob(true);
   };
 
   if (error) {
@@ -1160,7 +1230,10 @@ const JobsView = ({ user, token }) => {
                       Posted on {new Date(job.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <Button className="bg-blue-600 hover:bg-blue-700 ml-4">
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700 ml-4"
+                    onClick={() => handleApplyClick(job.id)} // UPDATED
+                  >
                     Apply Now
                   </Button>
                 </div>
@@ -1175,10 +1248,15 @@ const JobsView = ({ user, token }) => {
         token={token}
         onJobPosted={fetchJobs}
       />
+      <JobApplyModal // NEW: Render the Job Application Modal
+        isOpen={showApplyJob}
+        onClose={() => setShowApplyJob(false)}
+        token={token}
+        jobId={selectedJobId}
+      />
     </div>
   );
 };
-
 // Enhanced Profile View
 const ProfileView = ({ user, token, refreshUser }) => {
   const [profile, setProfile] = useState({
