@@ -1589,4 +1589,409 @@ const ProfileView = ({ user, token, refreshUser }) => {
                 value={profile.industry}
                 onChange={(e) => setProfile({...profile, industry: e.target.value})}
                 placeholder="e.g., Technology, Finance, Healthcare"
-                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:text
+                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+              />
+            </div>
+
+            <div>
+              <Label className="text-gray-950 dark:text-white">Location</Label>
+              <Input
+                value={profile.location}
+                onChange={(e) => setProfile({...profile, location: e.target.value})}
+                placeholder="e.g., San Francisco, CA"
+                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+              />
+            </div>
+
+            {user.role === 'Alumni' && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_mentor"
+                  checked={profile.is_mentor}
+                  onChange={(e) => setProfile({...profile, is_mentor: e.target.checked})}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="is_mentor" className="text-gray-950 dark:text-white">
+                  Available as a mentor to students
+                </Label>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+              Update Profile
+            </Button>
+          </form>
+
+          <div className="mt-6 border-t pt-6 border-gray-200 dark:border-slate-700">
+              <h3 className="text-gray-950 dark:text-white font-semibold mb-3">Connect Professionally</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                  Find your LinkedIn profile using your name and company.
+              </p>
+              {linkedinUrl ? (
+                  <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                          Go to LinkedIn Profile
+                      </Button>
+                  </a>
+              ) : (
+                  <Button 
+                      onClick={findLinkedinProfile} 
+                      disabled={findingLinkedin || !profile.company || user.status !== 'Verified'} 
+                      className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                      {findingLinkedin ? 'Finding Profile...' : 'Find LinkedIn Profile'}
+                  </Button>
+              )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Enhanced Admin View with Platform/Institution Separation
+const AdminView = ({ user, token }) => {
+  const [currentTab, setCurrentTab] = useState(user.role === 'Platform_Admin' ? 'institutions' : 'users');
+    
+  return (
+    <div className="space-y-6">
+      <Card className="bg-white border-gray-200 dark:bg-slate-800 dark:border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-gray-950 dark:text-white">
+            {user.role === 'Platform_Admin' ? 'Platform Administration' : 'Institution Administration'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-600 dark:text-gray-300">
+            {user.role === 'Platform_Admin' 
+              ? 'Manage institutions and platform-wide settings.'
+              : 'Manage users and content within your institution.'
+            }
+          </p>
+        </CardContent>
+      </Card>
+
+      <Tabs value={currentTab} onValueChange={setCurrentTab}>
+        <TabsList className="bg-gray-200 dark:bg-slate-800">
+          {user.role === 'Platform_Admin' && (
+            <TabsTrigger value="institutions" className="text-gray-950 dark:text-white">Institution Approvals</TabsTrigger>
+          )}
+          <TabsTrigger value="users" className="text-gray-950 dark:text-white">User Management</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="institutions">
+          <PlatformAdminInstitutions token={token} />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <UserManagement user={user} token={token} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+// Platform Admin Institution Management
+const PlatformAdminInstitutions = ({ token }) => {
+  const [pendingInstitutions, setPendingInstitutions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPendingInstitutions();
+  }, []);
+
+  const fetchPendingInstitutions = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/institutions/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingInstitutions(response.data);
+    } catch (error) {
+      toast.error('Failed to load pending institutions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (institutionId) => {
+    try {
+      await axios.post(`${API}/admin/institutions/${institutionId}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Institution approved successfully!');
+      fetchPendingInstitutions();
+    } catch (error) {
+      toast.error('Failed to approve institution');
+    }
+  };
+
+  const handleReject = async (institutionId) => {
+    try {
+      await axios.post(`${API}/admin/institutions/${institutionId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Institution rejected');
+      fetchPendingInstitutions();
+    } catch (error) {
+      toast.error('Failed to reject institution');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-gray-950 dark:text-white text-center py-8">Loading pending institutions...</div>;
+  }
+
+  return (
+    <Card className="bg-white border-gray-200 dark:bg-slate-800 dark:border-slate-700">
+      <CardHeader>
+        <CardTitle className="text-gray-950 dark:text-white">Pending Institution Approvals</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {pendingInstitutions.length === 0 ? (
+          <EmptyState
+            icon="🏫"
+            title="No Pending Institutions"
+            description="All institution registration requests have been processed."
+          />
+        ) : (
+          <div className="space-y-4">
+            {pendingInstitutions.map((institution) => (
+              <div key={institution.id} className="flex items-center justify-between p-4 bg-gray-200 rounded-lg dark:bg-slate-700">
+                <div className="flex-1">
+                  <h4 className="text-gray-950 dark:text-white font-semibold">{institution.name}</h4>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">{institution.website}</p>
+                  {institution.admin_details && (
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                      Admin: {institution.admin_details.name} ({institution.admin_details.email})
+                    </p>
+                  )}
+                  <p className="text-gray-500 text-xs">
+                    Submitted: {new Date(institution.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={() => handleApprove(institution.id)}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    Approve
+                  </Button>
+                  <Button 
+                    onClick={() => handleReject(institution.id)}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// User Management Component
+const UserManagement = ({ user, token }) => {
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPendingUsers();
+  }, []);
+
+  const fetchPendingUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/users/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingUsers(response.data);
+    } catch (error) {
+      toast.error('Failed to load pending users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyUser = async (userId) => {
+    try {
+      await axios.post(`${API}/admin/users/${userId}/verify`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('User verified successfully!');
+      fetchPendingUsers();
+    } catch (error) {
+      toast.error('Failed to verify user');
+    }
+  };
+
+  const rejectUser = async (userId) => {
+    try {
+      await axios.post(`${API}/admin/users/${userId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('User rejected');
+      fetchPendingUsers();
+    } catch (error) {
+      toast.error('Failed to reject user');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-gray-950 dark:text-white text-center py-8">Loading pending users...</div>;
+  }
+
+  return (
+    <Card className="bg-white border-gray-200 dark:bg-slate-800 dark:border-slate-700">
+      <CardHeader>
+        <CardTitle className="text-gray-950 dark:text-white">
+          Pending User {user.role === 'Platform_Admin' ? 'Verifications' : 'Approvals'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {pendingUsers.length === 0 ? (
+          <EmptyState
+            icon="✅"
+            title="No Pending Users"
+            description="All user registration requests have been processed."
+          />
+        ) : (
+          <div className="space-y-4">
+            {pendingUsers.map((pendingUser) => (
+              <div key={pendingUser.id} className="flex items-center justify-between p-4 bg-gray-200 rounded-lg dark:bg-slate-700">
+                <div className="flex-1">
+                  <h4 className="text-gray-950 dark:text-white font-semibold">
+                    {pendingUser.first_name} {pendingUser.last_name}
+                  </h4>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">{pendingUser.email}</p>
+                  <div className="flex space-x-2 mt-1">
+                    <Badge className="bg-blue-600 text-white text-xs">{pendingUser.role}</Badge>
+                    {pendingUser.major && (
+                      <Badge variant="secondary" className="text-xs">{pendingUser.major}</Badge>
+                    )}
+                  </div>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Registered: {new Date(pendingUser.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={() => verifyUser(pendingUser.id)}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    Approve
+                  </Button>
+                  <Button 
+                    onClick={() => rejectUser(pendingUser.id)}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Main App Component
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showInstitutionRegistration, setShowInstitutionRegistration] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [isDarkMode] = useDarkMode();
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleAuth = (userData, accessToken) => {
+    setUser(userData);
+    setToken(accessToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setToken(null);
+  };
+    
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get(`${API}/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const refreshedUser = response.data;
+      setUser(refreshedUser);
+      localStorage.setItem('user', JSON.stringify(refreshedUser));
+      console.log('User data refreshed:', refreshedUser);
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
+
+  const openLogin = () => {
+    setAuthMode('login');
+    setShowAuth(true);
+  };
+
+  const openRegister = () => {
+    setAuthMode('register');
+    setShowAuth(true);
+  };
+
+  const openInstitutionRegistration = () => {
+    setShowInstitutionRegistration(true);
+  };
+
+  return (
+    <div className="App">
+      <Toaster />
+      
+      {!user ? (
+        <>
+          <LandingPage 
+            onLogin={openLogin} 
+            onRegister={openRegister}
+            onRegisterInstitution={openInstitutionRegistration}
+          />
+          <AuthModal
+            isOpen={showAuth}
+            onClose={() => setShowAuth(false)}
+            mode={authMode}
+            onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+            onAuth={handleAuth}
+            refreshUser={refreshUser}
+          />
+          <InstitutionRegistrationModal
+            isOpen={showInstitutionRegistration}
+            onClose={() => setShowInstitutionRegistration(false)}
+          />
+        </>
+      ) : (
+        <Dashboard user={user} token={token} onLogout={handleLogout} refreshUser={refreshUser} />
+      )}
+    </div>
+  );
+};
+
+export default App;
