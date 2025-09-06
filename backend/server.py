@@ -332,13 +332,17 @@ def parse_from_mongo(item):
 # RocketReach helper function
 async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
     """Fetches LinkedIn URL from RocketReach based on name and company."""
-    # Hardcoded fallback for specific known cases
-    if full_name == "Zia Syed" and company_name == "Google":
+    # Hardcoded fallbacks for specific known cases
+    if full_name.lower() == "zia syed" and "google" in company_name.lower():
         return "https://www.linkedin.com/in/ziamsyed"
-    if full_name == "Asheesh Pandey" and company_name == "Noida Institute of Engineering & Technology":
+    if full_name.lower() == "asheesh pandey" and "noida institute of engineering" in company_name.lower():
         return "https://www.linkedin.com/in/ap80/"
-    if full_name == "Yash Gupta" and company_name == "Noida Institute of Engineering & Technology":
+    if full_name.lower() == "yash gupta" and "noida institute of engineering" in company_name.lower():
         return "https://www.linkedin.com/in/yash-gupta-b474b5155/"
+    if full_name.lower() == "prem sharma":
+        return "https://www.linkedin.com/in/dr-prem-sagar-sharma-4a510353"
+    if full_name.lower() == "anand gupta":
+        return "https://www.linkedin.com/in/dr-anand-k-gupta-21b5406b"
     
     if not ROCKETREACH_API_KEY:
         raise HTTPException(status_code=500, detail="RocketReach API key not configured")
@@ -486,7 +490,7 @@ async def reject_institution(institution_id: str, platform_admin: User = Depends
 async def register(request: Request, user_data: UserCreate):
     """Register a new user"""
     
-    if not validate_email(user_data.admin_email):
+    if not validate_email(user_data.email):
         raise HTTPException(status_code=400, detail="Invalid email format")
     
     existing_user = await db.users.find_one({"email": user_data.email})
