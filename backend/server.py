@@ -21,6 +21,7 @@ import json
 import html
 import bleach
 from contextlib import asynccontextmanager
+import requests
 
 # Define the root directory
 ROOT_DIR = Path(__file__).parent
@@ -41,8 +42,10 @@ SECRET_KEY = "alumni-connect-secret-key-production-2024"
 ALGORITHM = "HS256"
 
 # Gemini API setup
-# Ensure your GEMINI_API_KEY is set in the .env file
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+# Apollo.io API setup
+APOLLO_API_KEY = os.environ.get("APOLLO_API_KEY")
 
 # Configure logging
 logging.basicConfig(
@@ -74,7 +77,6 @@ def sanitize_input(text: str) -> str:
     """Sanitize user input to prevent XSS"""
     if not text:
         return text
-    # Remove HTML tags and escape special characters
     text = bleach.clean(text, tags=[], attributes={}, strip=True)
     text = html.escape(text)
     return text.strip()
@@ -131,6 +133,7 @@ class User(BaseModel):
     major: Optional[str] = None
     industry: Optional[str] = None
     location: Optional[str] = None
+    company: Optional[str] = None # Added company field
     profile_picture_url: Optional[str] = None
     is_mentor: bool = False
     connections: List[str] = []
@@ -145,8 +148,9 @@ class UserCreate(BaseModel):
     institution_id: Optional[str] = None
     graduation_year: Optional[int] = None
     major: Optional[str] = None
+    company: Optional[str] = None # Added company field
     
-    @field_validator('first_name', 'last_name', 'major')
+    @field_validator('first_name', 'last_name', 'major', 'company') # Added company
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
@@ -172,10 +176,11 @@ class UserLogin(BaseModel):
 class UserProfile(BaseModel):
     industry: Optional[str] = None
     location: Optional[str] = None
+    company: Optional[str] = None # Added company field
     is_mentor: Optional[bool] = None
     profile_picture_url: Optional[str] = None
     
-    @field_validator('industry', 'location')
+    @field_validator('industry', 'location', 'company') # Added company
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
@@ -322,6 +327,53 @@ def parse_from_mongo(item):
     if isinstance(item.get('created_at'), str):
         item['created_at'] = datetime.fromisoformat(item['created_at'])
     return item
+
+# Apollo.io helper function
+async def get_linkedin_url_from_apollo(full_name: str, company_name: str):
+    """Fetches LinkedIn URL from Apollo.io based on name and company."""
+    if not APOLLO_API_KEY:
+        raise HTTPException(status_code=500, detail="Apollo.io API key not configured")
+
+    search_url = "https://api.apollo.io/v1/people/match"
+    headers = {
+        "X-Api-Key": APOLLO_API_KEY,
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "api_key": APOLLO_API_KEY,
+        "name": full_name,
+        "organization_name": company_name
+    }
+
+    try:
+        response = requests.post(search_url, json=data, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        
+        if result.get("person") and result["person"].get("linkedin_url"):
+            return result["person"]["linkedin_url"]
+        
+        # Fallback to search if match fails
+        search_url = "https://api.apollo.io/v1/people/search"
+        data = {
+            "api_key": APOLLO_API_KEY,
+            "q_full_name": full_name,
+            "q_organization_name": company_name,
+            "per_page": 1,
+        }
+        response = requests.post(search_url, json=data, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        
+        if result.get("people") and len(result["people"]) > 0:
+            return result["people"][0].get("linkedin_url")
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Apollo.io API request failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch data from external API")
+    
+    return None
 
 # Root route
 @api_router.get("/")
@@ -530,6 +582,26 @@ async def update_profile(profile_data: UserProfile, current_user: User = Depends
     # Return the complete, updated user object to the frontend
     return User(**parse_from_mongo(updated_user))
 
+@api_router.post("/users/get-linkedin")
+async def get_user_linkedin(request_body: Dict[str, str]):
+    """
+    Finds a user's LinkedIn profile using Apollo.io.
+    Requires full name and company name.
+    """
+    full_name = request_body.get('full_name')
+    company_name = request_body.get('company_name')
+
+    if not full_name or not company_name:
+        raise HTTPException(status_code=400, detail="Full name and company name are required.")
+
+    linkedin_url = await get_linkedin_url_from_apollo(full_name, company_name)
+    
+    if not linkedin_url:
+        raise HTTPException(status_code=404, detail="LinkedIn profile not found for this user.")
+
+    return {"linkedin_url": linkedin_url}
+
+
 # Posts routes (institution-scoped)
 @api_router.get("/posts/feed", response_model=List[Post])
 async def get_feed(current_user: User = Depends(get_current_user)):
@@ -643,11 +715,8 @@ async def apply_for_job(request: Request, job_id: str, resume: UploadFile = File
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
     
-    # In a real app, you would save the resume to a cloud storage service like AWS S3 or Google Cloud Storage.
-    # For this project, we'll simulate the upload and just store the filename.
     resume_url = f"resume/{current_user.id}_{resume.filename}"
 
-    # Check for an existing application to prevent duplicates
     existing_application = await db.job_applications.find_one({
         "job_id": job_id,
         "applicant_id": current_user.id
@@ -771,7 +840,7 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
                 score += 25
             
             mentor['match_score'] = score
-        
+            
         sorted_mentors = sorted(mentors, key=lambda x: x.get('match_score', 0), reverse=True)
         rule_based_matches = [User(**parse_from_mongo(mentor)) for mentor in sorted_mentors[:5]]
         
@@ -853,7 +922,6 @@ async def accept_mentorship_request(request_id: str, current_user: User = Depend
         {"$set": {"status": "Accepted"}}
     )
 
-    # Automatically create a new chat conversation for the mentor and student
     chat_id = str(uuid.uuid4())
     chat = {
         "id": chat_id,
