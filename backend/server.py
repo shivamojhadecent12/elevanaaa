@@ -486,7 +486,7 @@ async def reject_institution(institution_id: str, platform_admin: User = Depends
 async def register(request: Request, user_data: UserCreate):
     """Register a new user"""
     
-    if not validate_email(user_data.email):
+    if not validate_email(user_data.admin_email):
         raise HTTPException(status_code=400, detail="Invalid email format")
     
     existing_user = await db.users.find_one({"email": user_data.email})
