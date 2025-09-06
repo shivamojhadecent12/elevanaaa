@@ -336,28 +336,20 @@ async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
         raise HTTPException(status_code=500, detail="RocketReach API key not configured")
 
     headers = {
-        "Api-Key": ROCKETREACH_API_KEY,
-        "Content-Type": "application/json"
+        "Api-Key": ROCKETREACH_API_KEY
     }
     
     name_parts = full_name.split()
     first_name = name_parts[0] if name_parts else ""
     last_name = name_parts[-1] if len(name_parts) > 1 else ""
 
-    data = {
-        "query": {
-            "name": {
-                "first_name": first_name,
-                "last_name": last_name
-            },
-            "current_company": {
-                "name": company_name
-            }
-        }
+    params = {
+        "name": f"{first_name} {last_name}",
+        "current_company": company_name
     }
 
     try:
-        response = requests.post(ROCKETREACH_API_URL, json=data, headers=headers)
+        response = requests.get(ROCKETREACH_API_URL, params=params, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -368,6 +360,8 @@ async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
     except requests.exceptions.HTTPError as http_err:
         if http_err.response.status_code == 402:
             raise HTTPException(status_code=402, detail="Out of credits. Please upgrade your plan.")
+        if http_err.response.status_code == 404:
+             raise HTTPException(status_code=404, detail="LinkedIn profile not found for this user.")
         logger.error(f"RocketReach API HTTP error: {http_err.response.text}")
         raise HTTPException(status_code=500, detail="Failed to fetch data from external API")
     except requests.exceptions.RequestException as e:
@@ -567,20 +561,16 @@ async def update_profile(profile_data: UserProfile, current_user: User = Depends
     """Update user profile"""
     update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
     
-    # Ensure only Alumni can set themselves as mentors
     if 'is_mentor' in update_data and current_user.role != 'Alumni':
         raise HTTPException(status_code=403, detail="Only alumni can be mentors")
     
-    # Update the user document in the database
     await db.users.update_one(
         {"email": current_user.email},
         {"$set": update_data}
     )
     
-    # Fetch the newly updated user from the database
     updated_user = await db.users.find_one({"email": current_user.email})
     
-    # Return the complete, updated user object to the frontend
     return User(**parse_from_mongo(updated_user))
 
 @api_router.post("/users/get-linkedin")
