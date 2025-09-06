@@ -1579,7 +1579,7 @@ const ProfileView = ({ user, token, refreshUser }) => {
                 value={profile.company}
                 onChange={(e) => setProfile({...profile, company: e.target.value})}
                 placeholder="e.g., Google"
-                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:text-white dark:border-slate-600"
               />
             </div>
 
