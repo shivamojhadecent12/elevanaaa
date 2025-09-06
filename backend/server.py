@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status, UploadFile, File, Form, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -569,9 +569,9 @@ async def update_profile(profile_data: UserProfile, current_user: User = Depends
     
     return User(**parse_from_mongo(updated_user))
 
-# Change this endpoint from POST to GET and use query parameters
+# Corrected endpoint to explicitly use Query parameters
 @api_router.get("/users/get-linkedin")
-async def get_user_linkedin(full_name: str, company_name: str):
+async def get_user_linkedin(full_name: str = Query(...), company_name: str = Query(...), current_user: User = Depends(get_current_user)):
     """
     Finds a user's LinkedIn profile using RocketReach.
     Requires full name and company name as query parameters.
