@@ -29,7 +29,7 @@ const API = `${BACKEND_URL}/api`;
 // 3D Globe Component
 const Globe = () => {
   const meshRef = React.useRef();
-  
+    
   const { scale } = useSpring({
     scale: [1, 1, 1],
     config: { mass: 1, tension: 280, friction: 60 }
@@ -178,23 +178,11 @@ const InstitutionRegistrationModal = ({ isOpen, onClose }) => {
     setLoading(true);
 
     try {
-      const endpoint = mode === 'login' ? 'auth/login' : 'auth/register';
-      const response = await axios.post(`${API}/${endpoint}`, formData);
-
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      onAuth(response.data.user, response.data.access_token);
-
-      if (mode === 'register') {
-        toast.success('Account created! Pending institution admin approval.');
-      } else {
-        toast.success('Welcome back!');
-      }
-
+      await axios.post(`${API}/institutions/register`, formData);
+      toast.success('Institution registration submitted for review!');
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Authentication failed');
+      toast.error(error.response?.data?.detail || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -455,6 +443,7 @@ const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser })
     role: 'Student',
     institution_id: '',
     major: '',
+    company: '',
     graduation_year: new Date().getFullYear()
   });
   const [institutions, setInstitutions] = useState([]);
@@ -576,16 +565,28 @@ const AuthModal = ({ isOpen, onClose, mode, onToggleMode, onAuth, refreshUser })
               </div>
               
               {formData.role === 'Alumni' && (
-                <div>
-                  <Label htmlFor="graduation_year">Graduation Year</Label>
-                  <Input
-                    id="graduation_year"
-                    type="number"
-                    value={formData.graduation_year}
-                    onChange={(e) => setFormData({...formData, graduation_year: parseInt(e.target.value)})}
-                    className="bg-gray-100 dark:bg-slate-800 border-gray-300 dark:border-slate-600"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label htmlFor="company">Current Company</Label>
+                    <Input
+                      id="company"
+                      value={formData.company}
+                      onChange={(e) => setFormData({...formData, company: e.target.value})}
+                      placeholder="e.g., Google"
+                      className="bg-gray-100 dark:bg-slate-800 border-gray-300 dark:border-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="graduation_year">Graduation Year</Label>
+                    <Input
+                      id="graduation_year"
+                      type="number"
+                      value={formData.graduation_year}
+                      onChange={(e) => setFormData({...formData, graduation_year: parseInt(e.target.value)})}
+                      className="bg-gray-100 dark:bg-slate-800 border-gray-300 dark:border-slate-600"
+                    />
+                  </div>
+                </>
               )}
             </>
           )}
@@ -1401,7 +1402,7 @@ const JobsView = ({ user, token }) => {
       setLoading(false);
     }
   };
-  
+    
   const handleApplyClick = (jobId) => {
     setSelectedJobId(jobId);
     setShowApplyJob(true);
@@ -1492,14 +1493,18 @@ const ProfileView = ({ user, token, refreshUser }) => {
   const [profile, setProfile] = useState({
     industry: user.industry || '',
     location: user.location || '',
+    company: user.company || '', // Added company field
     is_mentor: user.is_mentor || false,
     profile_picture_url: user.profile_picture_url || ''
   });
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [findingLinkedin, setFindingLinkedin] = useState(false);
 
   useEffect(() => {
     setProfile({
       industry: user.industry || '',
       location: user.location || '',
+      company: user.company || '',
       is_mentor: user.is_mentor || false,
       profile_picture_url: user.profile_picture_url || ''
     });
@@ -1515,6 +1520,29 @@ const ProfileView = ({ user, token, refreshUser }) => {
       toast.success('Profile updated successfully!');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update profile');
+    }
+  };
+
+  const findLinkedinProfile = async () => {
+    setFindingLinkedin(true);
+    setLinkedinUrl('');
+    try {
+        const response = await axios.post(
+            `${API}/users/get-linkedin`,
+            {
+                full_name: `${user.first_name} ${user.last_name}`,
+                company_name: profile.company || ''
+            },
+            {
+                headers: { Authorization: `Bearer ${token}` }
+            }
+        );
+        setLinkedinUrl(response.data.linkedin_url);
+        toast.success('LinkedIn profile found!');
+    } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to find LinkedIn profile');
+    } finally {
+        setFindingLinkedin(false);
     }
   };
 
@@ -1552,6 +1580,16 @@ const ProfileView = ({ user, token, refreshUser }) => {
                 <Label className="text-gray-950 dark:text-white">Major</Label>
                 <Input value={user.major || 'Not specified'} disabled className="bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-700 dark:text-gray-400 dark:border-slate-600" />
               </div>
+            </div>
+
+            <div>
+              <Label className="text-gray-950 dark:text-white">Company</Label>
+              <Input
+                value={profile.company}
+                onChange={(e) => setProfile({...profile, company: e.target.value})}
+                placeholder="e.g., Google"
+                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+              />
             </div>
 
             <div>
@@ -1593,6 +1631,28 @@ const ProfileView = ({ user, token, refreshUser }) => {
               Update Profile
             </Button>
           </form>
+
+          <div className="mt-6 border-t pt-6 border-gray-200 dark:border-slate-700">
+              <h3 className="text-gray-950 dark:text-white font-semibold mb-3">Connect Professionally</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                  Find your LinkedIn profile using your name and company.
+              </p>
+              {linkedinUrl ? (
+                  <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                          Go to LinkedIn Profile
+                      </Button>
+                  </a>
+              ) : (
+                  <Button 
+                      onClick={findLinkedinProfile} 
+                      disabled={findingLinkedin || !profile.company || user.status !== 'Verified'} 
+                      className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                      {findingLinkedin ? 'Finding Profile...' : 'Find LinkedIn Profile'}
+                  </Button>
+              )}
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -1602,7 +1662,7 @@ const ProfileView = ({ user, token, refreshUser }) => {
 // Enhanced Admin View with Platform/Institution Separation
 const AdminView = ({ user, token }) => {
   const [currentTab, setCurrentTab] = useState(user.role === 'Platform_Admin' ? 'institutions' : 'users');
-  
+    
   return (
     <div className="space-y-6">
       <Card className="bg-white border-gray-200 dark:bg-slate-800 dark:border-slate-700">
@@ -1882,7 +1942,7 @@ const App = () => {
     setUser(null);
     setToken(null);
   };
-  
+    
   const refreshUser = async () => {
     if (!token) return;
     try {
