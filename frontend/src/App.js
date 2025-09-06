@@ -892,7 +892,6 @@ const Dashboard = ({ user, token, onLogout, refreshUser }) => {
           {currentView === 'admin' && (user.role === 'Institution_Admin' || user.role === 'Platform_Admin') && <AdminView user={user} token={token} />}
           {currentView === 'mentor-requests' && user.role === 'Alumni' && user.is_mentor && <MentorRequestsView user={user} token={token} setCurrentView={setCurrentView} />}
           {currentView.startsWith('chat-') && <ChatView user={user} token={token} chatId={currentView.substring(5)} />}
-          {currentView === 'chat-list' && <ChatListView user={user} token={token} setCurrentView={setCurrentView} chats={chats} />}
         </div>
       </main>
     </div>
@@ -1523,12 +1522,8 @@ const ProfileView = ({ user, token, refreshUser }) => {
     setFindingLinkedin(true);
     setLinkedinUrl('');
     try {
-        const response = await axios.post(
-            `${API}/users/get-linkedin`,
-            {
-                full_name: `${user.first_name} ${user.last_name}`,
-                company_name: profile.company || ''
-            },
+        const response = await axios.get(
+            `${API}/users/get-linkedin?full_name=${encodeURIComponent(`${user.first_name} ${user.last_name}`)}&company_name=${encodeURIComponent(profile.company || '')}`,
             {
                 headers: { Authorization: `Bearer ${token}` }
             }
@@ -1604,7 +1599,7 @@ const ProfileView = ({ user, token, refreshUser }) => {
                 value={profile.location}
                 onChange={(e) => setProfile({...profile, location: e.target.value})}
                 placeholder="e.g., San Francisco, CA"
-                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                className="bg-gray-100 text-gray-950 border-gray-300 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
               />
             </div>
 
