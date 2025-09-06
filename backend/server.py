@@ -339,13 +339,10 @@ async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
         "Api-Key": ROCKETREACH_API_KEY
     }
     
-    name_parts = full_name.split()
-    first_name = name_parts[0] if name_parts else ""
-    last_name = name_parts[-1] if len(name_parts) > 1 else ""
-
+    # Corrected parameters for the GET request
     params = {
-        "name": f"{first_name} {last_name}",
-        "current_company": company_name
+        "name": full_name,
+        "current_employer": company_name
     }
 
     try:
