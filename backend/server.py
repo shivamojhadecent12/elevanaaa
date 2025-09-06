@@ -339,7 +339,6 @@ async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
         "Api-Key": ROCKETREACH_API_KEY
     }
     
-    # Corrected parameters for the GET request
     params = {
         "name": full_name,
         "current_employer": company_name
@@ -570,15 +569,13 @@ async def update_profile(profile_data: UserProfile, current_user: User = Depends
     
     return User(**parse_from_mongo(updated_user))
 
-@api_router.post("/users/get-linkedin")
-async def get_user_linkedin(request_body: Dict[str, str]):
+# Change this endpoint from POST to GET and use query parameters
+@api_router.get("/users/get-linkedin")
+async def get_user_linkedin(full_name: str, company_name: str):
     """
     Finds a user's LinkedIn profile using RocketReach.
-    Requires full name and company name.
+    Requires full name and company name as query parameters.
     """
-    full_name = request_body.get('full_name')
-    company_name = request_body.get('company_name')
-
     if not full_name or not company_name:
         raise HTTPException(status_code=400, detail="Full name and company name are required.")
 
