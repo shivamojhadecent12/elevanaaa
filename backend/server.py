@@ -355,7 +355,7 @@ async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
             
     except requests.exceptions.HTTPError as http_err:
         if http_err.response.status_code == 402:
-            raise HTTPException(status_code=402, detail="Out of credits. Please upgrade your plan.")
+            raise HTTPException(status_code=402, detail="Lookup monthly rate limit reached. Please try again next month.")
         if http_err.response.status_code == 404:
              raise HTTPException(status_code=404, detail="LinkedIn profile not found for this user.")
         logger.error(f"RocketReach API HTTP error: {http_err.response.text}")
