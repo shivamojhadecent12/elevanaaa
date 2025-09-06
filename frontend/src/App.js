@@ -694,7 +694,7 @@ const ChatView = ({ token, chatId, user }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNewMessage('');
-            fetchChat(); // Refresh chat after sending
+            fetchChat();
         } catch (error) {
             toast.error(error.response?.data?.detail || 'Failed to send message');
         }
@@ -781,8 +781,7 @@ const MentorRequestsView = ({ user, token, setCurrentView }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success(response.data.message);
-      fetchRequests(); // Refresh the list of requests
-      // Automatically navigate to the new chat
+      fetchRequests();
       setCurrentView(`chat-${response.data.chat_id}`);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to accept request.');
@@ -1293,10 +1292,7 @@ const MentorView = ({ user, token, setCurrentView }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success(response.data.message);
-      // Optional: Give student an immediate link to the new chat
-      if (response.data.chat_id) {
-        setCurrentView(`chat-${response.data.chat_id}`);
-      }
+      setCurrentView(`chat-${response.data.chat_id}`);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to send mentorship request');
     }
@@ -1493,7 +1489,7 @@ const ProfileView = ({ user, token, refreshUser }) => {
   const [profile, setProfile] = useState({
     industry: user.industry || '',
     location: user.location || '',
-    company: user.company || '', // Added company field
+    company: user.company || '',
     is_mentor: user.is_mentor || false,
     profile_picture_url: user.profile_picture_url || ''
   });
