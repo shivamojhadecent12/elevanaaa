@@ -44,8 +44,9 @@ ALGORITHM = "HS256"
 # Gemini API setup
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# Apollo.io API setup
-APOLLO_API_KEY = os.environ.get("APOLLO_API_KEY")
+# RocketReach API setup
+ROCKETREACH_API_KEY = os.environ.get("ROCKETREACH_API_KEY")
+ROCKETREACH_API_URL = "https://api.rocketreach.co/v2/api/person/lookup"
 
 # Configure logging
 logging.basicConfig(
@@ -133,7 +134,7 @@ class User(BaseModel):
     major: Optional[str] = None
     industry: Optional[str] = None
     location: Optional[str] = None
-    company: Optional[str] = None # Added company field
+    company: Optional[str] = None
     profile_picture_url: Optional[str] = None
     is_mentor: bool = False
     connections: List[str] = []
@@ -148,9 +149,9 @@ class UserCreate(BaseModel):
     institution_id: Optional[str] = None
     graduation_year: Optional[int] = None
     major: Optional[str] = None
-    company: Optional[str] = None # Added company field
+    company: Optional[str] = None
     
-    @field_validator('first_name', 'last_name', 'major', 'company') # Added company
+    @field_validator('first_name', 'last_name', 'major', 'company')
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
@@ -176,11 +177,11 @@ class UserLogin(BaseModel):
 class UserProfile(BaseModel):
     industry: Optional[str] = None
     location: Optional[str] = None
-    company: Optional[str] = None # Added company field
+    company: Optional[str] = None
     is_mentor: Optional[bool] = None
     profile_picture_url: Optional[str] = None
     
-    @field_validator('industry', 'location', 'company') # Added company
+    @field_validator('industry', 'location', 'company')
     def sanitize_text_fields(cls, v):
         if v:
             return sanitize_input(v)
@@ -328,49 +329,49 @@ def parse_from_mongo(item):
         item['created_at'] = datetime.fromisoformat(item['created_at'])
     return item
 
-# Apollo.io helper function
-async def get_linkedin_url_from_apollo(full_name: str, company_name: str):
-    """Fetches LinkedIn URL from Apollo.io based on name and company."""
-    if not APOLLO_API_KEY:
-        raise HTTPException(status_code=500, detail="Apollo.io API key not configured")
+# RocketReach helper function
+async def get_linkedin_url_from_rocketreach(full_name: str, company_name: str):
+    """Fetches LinkedIn URL from RocketReach based on name and company."""
+    if not ROCKETREACH_API_KEY:
+        raise HTTPException(status_code=500, detail="RocketReach API key not configured")
 
-    search_url = "https://api.apollo.io/v1/people/match"
     headers = {
-        "X-Api-Key": APOLLO_API_KEY,
+        "Api-Key": ROCKETREACH_API_KEY,
         "Content-Type": "application/json"
     }
     
+    name_parts = full_name.split()
+    first_name = name_parts[0] if name_parts else ""
+    last_name = name_parts[-1] if len(name_parts) > 1 else ""
+
     data = {
-        "api_key": APOLLO_API_KEY,
-        "name": full_name,
-        "organization_name": company_name
+        "query": {
+            "name": {
+                "first_name": first_name,
+                "last_name": last_name
+            },
+            "current_company": {
+                "name": company_name
+            }
+        }
     }
 
     try:
-        response = requests.post(search_url, json=data, headers=headers)
+        response = requests.post(ROCKETREACH_API_URL, json=data, headers=headers)
         response.raise_for_status()
+        
         result = response.json()
         
-        if result.get("person") and result["person"].get("linkedin_url"):
-            return result["person"]["linkedin_url"]
-        
-        # Fallback to search if match fails
-        search_url = "https://api.apollo.io/v1/people/search"
-        data = {
-            "api_key": APOLLO_API_KEY,
-            "q_full_name": full_name,
-            "q_organization_name": company_name,
-            "per_page": 1,
-        }
-        response = requests.post(search_url, json=data, headers=headers)
-        response.raise_for_status()
-        result = response.json()
-        
-        if result.get("people") and len(result["people"]) > 0:
-            return result["people"][0].get("linkedin_url")
+        if result.get("data") and result["data"].get("linkedin_url"):
+            return result["data"]["linkedin_url"]
             
+    except requests.exceptions.HTTPError as http_err:
+        if http_err.response.status_code == 402:
+            raise HTTPException(status_code=402, detail="Out of credits. Please upgrade your plan.")
+        logger.error(f"RocketReach API HTTP error: {http_err.response.text}")
+        raise HTTPException(status_code=500, detail="Failed to fetch data from external API")
     except requests.exceptions.RequestException as e:
-        logger.error(f"Apollo.io API request failed: {e}")
+        logger.error(f"RocketReach API request failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch data from external API")
     
     return None
@@ -585,7 +586,7 @@ async def update_profile(profile_data: UserProfile, current_user: User = Depends
 @api_router.post("/users/get-linkedin")
 async def get_user_linkedin(request_body: Dict[str, str]):
     """
-    Finds a user's LinkedIn profile using Apollo.io.
+    Finds a user's LinkedIn profile using RocketReach.
     Requires full name and company name.
     """
     full_name = request_body.get('full_name')
@@ -594,7 +595,7 @@ async def get_user_linkedin(request_body: Dict[str, str]):
     if not full_name or not company_name:
         raise HTTPException(status_code=400, detail="Full name and company name are required.")
 
-    linkedin_url = await get_linkedin_url_from_apollo(full_name, company_name)
+    linkedin_url = await get_linkedin_url_from_rocketreach(full_name, company_name)
     
     if not linkedin_url:
         raise HTTPException(status_code=404, detail="LinkedIn profile not found for this user.")
@@ -804,7 +805,6 @@ async def get_mentor_matches(current_user: User = Depends(get_current_user)):
             response = await model.generate_content_async(prompt)
             
             raw_text = response.text.strip()
-            # Clean the response to ensure it is valid JSON
             clean_text = raw_text.split("```json")[-1].split("```")[0].strip()
             
             if not clean_text:
